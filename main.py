@@ -1,4 +1,4 @@
-import psycopg2 
+import psycopg2
 
 
 conn = None
@@ -56,9 +56,10 @@ def manage_database_menu():
         if command == "1":
             print(f"{command} selected.")
             image_path = input("Please enter the path of the image: ")
-            verify_image_path(image_path)
             template_type = input("Please enter the template_type: ")
-            add_template(image_path, template_type)
+            verify_image_path(image_path)
+            image_byte_array = read_image_to_byte_array(image_path)
+            add_template(template_type, image_path, image_byte_array)
         elif command == "2":
             print(f"{command} selected.")
             delete_template_id = input("Enter the template_id you wish to delete: ")
@@ -73,20 +74,24 @@ def manage_database_menu():
 
 
 def verify_image_path(image_path):
+    #TODO: add functionality to verify an image.
     print("Image verified.")
 
-def add_template(image_path, template_type):
-    #TODO: add functionality to extract image name from path.
+
+def add_template(template_type, image_name, image_byte_array):
+    #TODO: add functionality to extract image_name from path.
     #      Maybe find last '/' and have name = what's left.
     global conn
-    image_name = image_path
     try:
         curr = conn.cursor()
-        query = f"""
-        INSERT INTO template (template_type, image_name, image) VALUES
-        ('{template_type}', '{image_name}', bytea('{image_path}'));
-         """
-        curr.execute(query)
+        print("adding template...")
+        curr.execute('''
+        INSERT INTO template (template_type, image_name, image)
+        VALUES(%s, %s, %s)''', (template_type, image_name, image_byte_array))
+        print("Updating template...")
+        curr.execute('''
+        UPDATE template
+        SET image = %s''', (image_byte_array + b'1',))
         conn.commit()
         curr.close()
         print("Added template successfully.")
@@ -99,21 +104,20 @@ def delete_template(template_id):
     global conn
     try:
         curr = conn.cursor()
-        query = f"""
+        curr.execute('''
         DELETE FROM template
-        WHERE template_id = {template_id}
-        """
-        curr.execute(query)
+        WHERE template_id = %s
+        ''', (template_id))
         conn.commit()
         curr.close()
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
 
 
-def view_template_menu():
+def access_template_menu():
     print("view_template_menu() called")
-    show_view_template_menu = True
-    while show_view_template_menu:
+    show_access_template_menu = True
+    while show_access_template_menu:
         print("""
         Command:        Description:\n
         1         ---   View image by template_id.\n
@@ -123,27 +127,26 @@ def view_template_menu():
         if command == '1':
             print(f"{command} selected.")
             template_id = input("Enter template_id: ")
-            look_up_image_by_template_id(template_id)
+            access_image_by_template_id(template_id)
         elif command =='r':
-            show_view_template_menu = False
+            show_access_template_menu = False
         else:
             print(f"{command} is not a valid command.\nPlease try again.")
 
-def look_up_image_by_template_id(template_id):
+
+def access_image_by_template_id(template_id):
     global conn
     try:
         curr = conn.cursor()
-        query = f"""
+        curr.execute('''
         SELECT image
         FROM template
-        WHERE template_id = {template_id}
-        """
-        curr.execute(query)
-        image = curr.fetchone()
-        print(image)
-        image = bytes(image)
-        print(image)
+        WHERE template_id = %s
+        ''', (template_id))
+        mview = curr.fetchone()
+        image = mview[0].tobytes()
         curr.close()
+        return image
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
 
@@ -151,6 +154,12 @@ def look_up_image_by_template_id(template_id):
 def quit_application():
     print("quit_application() called")
     disconnect()
+
+
+def read_image_to_byte_array(image_path):
+    with open(image_path, 'rb') as f:
+        b = bytearray(f.read())
+        return b
 
 
 def main():
@@ -167,7 +176,7 @@ def main():
 
         user_command = input("Enter a command: ")
         if user_command == "v":
-            view_template_menu()
+            access_template_menu()
         elif user_command == "m":
             manage_database_menu()
         elif user_command == "q":
