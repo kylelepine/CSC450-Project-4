@@ -102,7 +102,7 @@ def test1():
     print(c.shape)
 
 def test2():
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(cv2.CAP_DSHOW)
     previous_frame = None
 
     if not cap.isOpened():
