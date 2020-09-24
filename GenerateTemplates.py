@@ -44,6 +44,18 @@ def img_diff(frame, previous_frame):
     diff_frame = diff_frame.astype('uint8')
     return diff_frame
 
+def transform_binary(frame):
+    # binary_img = np.where((frame < 127), 0, 255)
+    # binary_img.astype('uint8')
+    # print(binary_img)
+
+    # frame[frame < 127] = 0
+    # frame[frame >= 127] = 255
+
+    im_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    (thresh, im_bw) = cv2.threshold(im_gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    return im_bw
+
 def test0():
     print('test0()')
     image_bytes = readimage('test_image.jpeg')
@@ -103,6 +115,8 @@ def test2():
             if previous_frame is not None:
                 display_img = img_diff(frame, previous_frame)
             
+            display_img = transform_binary(display_img)
+
             cv2.imshow('display', display_img)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
