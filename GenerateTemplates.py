@@ -56,6 +56,7 @@ def transform_binary(frame):
     (thresh, im_bw) = cv2.threshold(im_gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     return im_bw
 
+# displays image from file
 def test0():
     print('test0()')
     image_bytes = readimage('test_image.jpeg')
@@ -63,6 +64,7 @@ def test0():
     print('OpenCV:\n', img)
     show_image(img)
 
+# Shows differences of opencv's cvtColor()
 def test1():
     print('test1()')
     img = np.zeros([200, 200, 3])
@@ -101,6 +103,7 @@ def test1():
     print(c)
     print(c.shape)
 
+# Demonstrates calculating frame difference, displays binary image
 def test2():
     cap = cv2.VideoCapture(cv2.CAP_DSHOW)
     previous_frame = None
@@ -111,18 +114,169 @@ def test2():
     while(True):
         ret, frame = cap.read()
         if ret == True:
+            edges = cv2.Canny(frame, 480, 640)
             display_img = frame
             if previous_frame is not None:
                 display_img = img_diff(frame, previous_frame)
             
             display_img = transform_binary(display_img)
 
+            
+            cv2.imshow('edges', edges)
             cv2.imshow('display', display_img)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
         previous_frame = frame
     cap.release()
+    cv2.destroyAllWindows()
+
+# Uses OpenCv's background subtractions
+def test3():
+    cap = cv2.VideoCapture(cv2.CAP_DSHOW)
+    fgbg = cv2.createBackgroundSubtractorMOG2()
+
+    while(True):
+        ret, frame = cap.read()
+        fgmask = fgbg.apply(frame)
+
+        cv2.imshow('frame', fgmask)
+        k = cv2.waitKey(30) & 0xff
+        if k == 27:
+            break
+    
+    cap.release()
+    cv2.destroyAllWindows()
+
+def test4():
+    cap = cv2.VideoCapture('./fall_samples/fall-01-cam0.mp4')
+    fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows= False)
+
+    target = 10
+    counter = 0
+
+    while(True):
+        if counter == target:
+            ret, frame = cap.read()
+            fgmask = fgbg.apply(frame)
+            cv2.imshow('mask', fgmask)
+            cv2.imshow('original', frame)
+            counter = 0
+        else:
+            ret = cap.grab()
+            counter += 1
+        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    
+    cap.release()
+    cv2.destroyAllWindows()
+
+def test5():
+    previous_frame = None
+    cap = cv2.VideoCapture('./fall_samples/fall-01-cam0.mp4')
+
+    target = 0
+    counter = 0
+    file_count = 0
+    while(True):
+        if counter == target:
+            ret, frame = cap.read()
+            if ret == True:
+                binary_subtraction_img = frame
+                if previous_frame is not None:
+                    binary_subtraction_img = img_diff(frame, previous_frame)
+                
+                binary_subtraction_img = transform_binary(binary_subtraction_img)
+
+                edges = cv2.Canny(frame, 640, 240)
+
+                cv2.imshow('edges', edges)
+                cv2.imshow('mask', binary_subtraction_img)
+                cv2.imshow('original', frame)
+                cv2.imwrite('./templates/background_subtraction/test_template' + str(file_count) + '.png', binary_subtraction_img)
+                cv2.imwrite('./templates/edge_detection/test_template' + str(file_count) + '.png', edges)
+                
+                previous_frame = frame
+                file_count +=1
+                counter = 0
+        else:
+            ret = cap.grab()
+            counter += 1
+        
+        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    
+    cap.release()
+    cv2.destroyAllWindows()
+
+def test6():
+    cap = cv2.VideoCapture(cv2.CAP_DSHOW)
+    
+    # Check if camera opened successfully
+    if (cap.isOpened()== False): 
+        print("Error opening video stream or file")
+
+    fgbg = cv2.createBackgroundSubtractorMOG2(
+        history=10,
+        varThreshold=2,
+        detectShadows=False)
+
+    # Read the video
+    while(cap.isOpened()):
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+        if ret == True:
+        
+            # Converting the image to grayscale.
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # Smoothing without removing edges.
+            gray_filtered = cv2.bilateralFilter(gray, 7, 50, 50)
+            
+            # Extract the foreground
+            foreground = fgbg.apply(gray_filtered)
+            
+            # Smooth out to get the moving area
+            kernel = np.ones((50,50),np.uint8)
+            foreground_morph = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel)
+            
+            # Using the Canny filter to get contours
+            edges = cv2.Canny(gray, 20, 30)
+
+            # Using the Canny filter with different parameters
+            edges_high_thresh = cv2.Canny(gray, 60, 120)
+
+            edges_filtered = cv2.Canny(gray_filtered, 60, 120)
+
+            # Crop off the edges out of the moving area
+            cropped = (foreground // 255) * edges_filtered
+
+            # Stacking the images to print them together
+            # For comparison
+            images = np.hstack((gray, edges,  edges_filtered))
+
+            # Display the resulting frame
+            cv2.imshow('Frame', images)
+            cv2.imshow('original', frame)
+            cv2.imshow('cropped', cropped)
+            cv2.imshow('morphologyEx', foreground_morph)
+            cv2.imshow('background_subtractor', foreground)
+
+
+            # Press Q on keyboard to  exit
+            if cv2.waitKey(25) & 0xFF == ord('q'):
+                break
+        
+        # Break the loop
+        else: 
+            break
+    
+    # When everything done, release the video capture object
+    cap.release()
+    
+    # Closes all the frames
     cv2.destroyAllWindows()
 
 def main():
@@ -130,7 +284,11 @@ def main():
 
     # test0()
     # test1()
-    test2()
+    # test2()
+    # test3()
+    # test4()
+    # test5()
+    test6()
 
 if __name__ == '__main__':
     main()
