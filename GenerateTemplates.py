@@ -1,110 +1,51 @@
 import numpy as np
 from cv2 import cv2
 
-from array import array
-
-
 def readimage(path):
     print(f'readimage({path})')
     with open(path, 'rb') as f:
         return f.read()
 
-def byteStr_to_image(img_str):
+def byteStr_to_image(source_str):
     print('byteStr_to_image')
-    decoded = cv2.imdecode(np.frombuffer(img_str, np.uint8), -1)
+    decoded = cv2.imdecode(np.frombuffer(source_str, np.uint8), -1)
     return decoded
 
-def show_image(img):
+def show_image(source):
     print('show_image()')
-    print(type(img))
-    cv2.imshow('Image', img)
+    print(type(source))
+    cv2.imshow('Image', source)
     while True:
-        k = cv2.waitKey(0) & 0xFF
-        if k == 27: break
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            break
     return cv2.destroyAllWindows()
 
-def img_diff(frame, previous_frame):
+def frame_difference(frame, previous_frame):
     frame = frame.astype('int16')
     previous_frame = previous_frame.astype('int16')
     diff_frame = np.zeros_like(frame)
 
     if frame.shape == previous_frame.shape:
-        diff_frame = np.subtract(frame, previous_frame)
-        diff_frame = np.absolute(diff_frame)
+        diff_frame = np.absolute(np.subtract(frame, previous_frame))
 
-        # Manual way -- NOTE: Very slow 
-    #     for x in range(len(frame)):
-    #         for y in range(len(frame[x])):
-    #             for BGR in range(3):
-    #                 diff_frame[x,y,BGR] = np.absolute(int(frame[x,y,BGR]) - int(previous_frame[x,y,BGR]))
-
-    # print("Frame: " + str(frame[0,0,:]))
-    # print("Prevoius Frame: " + str(previous_frame[0,0,:]))
-    # print("Diff Frame: " + str(diff_frame[0,0,:]))
     diff_frame = diff_frame.astype('uint8')
     return diff_frame
 
 def transform_binary(frame):
-    # binary_img = np.where((frame < 127), 0, 255)
-    # binary_img.astype('uint8')
-    # print(binary_img)
-
-    # frame[frame < 127] = 0
-    # frame[frame >= 127] = 255
-
     im_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     (thresh, im_bw) = cv2.threshold(im_gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     return im_bw
 
 # displays image from file
-def test0():
+def image_display_test(image_path):
     print('test0()')
-    image_bytes = readimage('test_image.jpeg')
+    image_bytes = readimage(image_path)
     img = byteStr_to_image(image_bytes)
     print('OpenCV:\n', img)
     show_image(img)
 
-# Shows differences of opencv's cvtColor()
-def test1():
-    print('test1()')
-    img = np.zeros([200, 200, 3])
-    # print (img)
-    img[:,:,0] = np.ones([200,200]) * 255
-    img[:,:,1] = np.ones([200,200]) * 255
-    img[:,:,2] = np.ones([200,200]) * 0
-
-    for row in img:
-        for pixel in row:
-            # print(pixel)
-            pixel[0] = 255 # B
-            pixel[1] = 0   # G
-            pixel[2] = 255 # R
-            # print(pixel)
-
-    # cv2.imwrite('color_img.jpg', img)
-
-    c = cv2.imread('color_img.jpg', 1)
-    c = cv2.cvtColor(c, cv2.COLOR_BGR2RGB)
-
-    d = cv2.imread('color_img.jpg', 1)
-    d = cv2.cvtColor(c, cv2.COLOR_RGB2BGR)
-
-    e = cv2.imread('color_img.jpg', -1)
-    e = cv2.cvtColor(c, cv2.COLOR_BGR2RGB)
-
-    f = cv2.imread('color_img.jpg', -1)
-    f = cv2.cvtColor(c, cv2.COLOR_RGB2BGR)
-
-    images = [c, d, e, f]
-
-    for img in images:
-        show_image(img)
-
-    print(c)
-    print(c.shape)
-
 # Demonstrates calculating frame difference, displays binary image
-def test2():
+def original_frame_difference_calculator():
     cap = cv2.VideoCapture(cv2.CAP_DSHOW)
     previous_frame = None
 
@@ -117,10 +58,9 @@ def test2():
             edges = cv2.Canny(frame, 480, 640)
             display_img = frame
             if previous_frame is not None:
-                display_img = img_diff(frame, previous_frame)
+                display_img = frame_difference(frame, previous_frame)
             
             display_img = transform_binary(display_img)
-
             
             cv2.imshow('edges', edges)
             cv2.imshow('display', display_img)
@@ -131,50 +71,9 @@ def test2():
     cap.release()
     cv2.destroyAllWindows()
 
-# Uses OpenCv's background subtractions
-def test3():
-    cap = cv2.VideoCapture(cv2.CAP_DSHOW)
-    fgbg = cv2.createBackgroundSubtractorMOG2()
-
-    while(True):
-        ret, frame = cap.read()
-        fgmask = fgbg.apply(frame)
-
-        cv2.imshow('frame', fgmask)
-        k = cv2.waitKey(30) & 0xff
-        if k == 27:
-            break
-    
-    cap.release()
-    cv2.destroyAllWindows()
-
-def test4():
-    cap = cv2.VideoCapture('./fall_samples/fall-01-cam0.mp4')
-    fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows= False)
-
-    target = 10
-    counter = 0
-
-    while(True):
-        if counter == target:
-            ret, frame = cap.read()
-            fgmask = fgbg.apply(frame)
-            cv2.imshow('mask', fgmask)
-            cv2.imshow('original', frame)
-            counter = 0
-        else:
-            ret = cap.grab()
-            counter += 1
-        
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    
-    cap.release()
-    cv2.destroyAllWindows()
-
-def test5():
+def video_display(video_path):
     previous_frame = None
-    cap = cv2.VideoCapture('./fall_samples/fall-01-cam0.mp4')
+    cap = cv2.VideoCapture(video_path)
 
     target = 0
     counter = 0
@@ -185,7 +84,7 @@ def test5():
             if ret == True:
                 binary_subtraction_img = frame
                 if previous_frame is not None:
-                    binary_subtraction_img = img_diff(frame, previous_frame)
+                    binary_subtraction_img = frame_difference(frame, previous_frame)
                 
                 binary_subtraction_img = transform_binary(binary_subtraction_img)
 
@@ -211,8 +110,11 @@ def test5():
     cap.release()
     cv2.destroyAllWindows()
 
-def test6():
-    cap = cv2.VideoCapture(cv2.CAP_DSHOW)
+def display(video_path):
+    if video_path is not None:
+        cap = cv2.VideoCapture(video_path)
+    else:
+        cap = cv2.VideoCapture(cv2.CAP_DSHOW)
     
     # Check if camera opened successfully
     if (cap.isOpened()== False): 
@@ -240,30 +142,29 @@ def test6():
             
             # Smooth out to get the moving area
             kernel = np.ones((50,50),np.uint8)
-            foreground_morph = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel)
-            
-            # Using the Canny filter to get contours
-            edges = cv2.Canny(gray, 20, 30)
 
-            # Using the Canny filter with different parameters
-            edges_high_thresh = cv2.Canny(gray, 60, 120)
+            foreground_morph = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel)
 
             edges_filtered = cv2.Canny(gray_filtered, 60, 120)
 
             # Crop off the edges out of the moving area
-            cropped = (foreground // 255) * edges_filtered
+            cropped_edges = (foreground_morph // 255) * edges_filtered
+
+            #EXPERIMENTAl
+            edges_and_foreground = np.add(edges_filtered, foreground)
 
             # Stacking the images to print them together
             # For comparison
-            images = np.hstack((gray, edges,  edges_filtered))
+            frames_normal = np.hstack(( gray,  gray_filtered))
+            frames_edges = np.hstack((edges_filtered,  cropped_edges))
+            layered_frames = edges_and_foreground
 
             # Display the resulting frame
-            cv2.imshow('Frame', images)
-            cv2.imshow('original', frame)
-            cv2.imshow('cropped', cropped)
-            cv2.imshow('morphologyEx', foreground_morph)
-            cv2.imshow('background_subtractor', foreground)
-
+            cv2.imshow('Normal Frames', frames_normal)
+            cv2.imshow('Frames Edges', frames_edges)
+            cv2.imshow('Foreground Frames', foreground)
+            cv2.imshow('layered Frames', layered_frames)
+            cv2.imshow('MorphologyEx', foreground_morph)
 
             # Press Q on keyboard to  exit
             if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -281,15 +182,10 @@ def test6():
 
 def main():
     print('main()')
-
-    # test0()
-    # test1()
-    # test2()
-    # test3()
-    # test4()
-    # test5()
-    test6()
-
+    # image_display_test('test_image.jpeg')
+    # display('./fall_samples/fall-01-cam0.mp4')
+    display(None)
+    
 if __name__ == '__main__':
     main()
     
