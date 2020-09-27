@@ -4,7 +4,6 @@ import argparse
 
 def detectAndDisplay(frame):
 
-    frame = cv.resize(frame, (640,480))
     frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
     frame_gray = cv.equalizeHist(frame_gray)
 
@@ -12,13 +11,13 @@ def detectAndDisplay(frame):
     profile = profile_cascade.detectMultiScale(frame_gray)
     for(x,y,w,h) in profile:
         center = (x + w//2, y + h//2)
-        frame = cv.ellipse(frame, center, (w//2, h//2), 0, 0, 360, (255, 255, 0), 4)
+        cv.ellipse(frame, center, (w//2, h//2), 0, 0, 360, (255, 255, 0), 4)
 
     #-- Detect face
     faces = face_cascade.detectMultiScale(frame_gray)
     for (x2,y2,w2,h2) in faces:
         center = (x2 + w2//2, y2 + h2//2)
-        frame = cv.ellipse(frame, center, (w2//2, h2//2), 0, 0, 360, (255, 0, 255), 4)
+        cv.ellipse(frame, center, (w2//2, h2//2), 0, 0, 360, (255, 0, 255), 4)
         faceROI = frame_gray[y2:y2+h2,x2:x2+w2]
 
         #-- In each face, detect eyes
@@ -26,7 +25,7 @@ def detectAndDisplay(frame):
         for (x3,y3,w3,h3) in eyes:
             eye_center = (x2 + x3 + w3//2, y2 + y3 + h3//2)
             radius = int(round((w3 + h3)*0.25))
-            frame = cv.circle(frame, eye_center, radius, (255, 0, 0 ), 4)
+            cv.circle(frame, eye_center, radius, (255, 0, 0 ), 4)
 
     cv.imshow('Face, Profile, Eye Detection', frame)
 parser = argparse.ArgumentParser(description='Code for Cascade Classifier tutorial.')
