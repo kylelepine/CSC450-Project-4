@@ -10,6 +10,7 @@ while(True):
           
         ret, frame = cap.read()
         frame = cv2.flip(frame,1)
+        kernel = np.ones((3,3),np.uint8)
         
         #Set Viewing Region to Include the Whole Frame
         viewRegion = frame[0:1000, 0:1000]
@@ -24,6 +25,12 @@ while(True):
         
         #Extract Skin Color
         mask = cv2.inRange(hsv, darker_skin, lighter_skin)
+
+        #Fill Dark Spots Within Light Areas
+        mask = cv2.dilate(mask,kernel,iterations = 4)
+        
+        #Put a Gaussian Blur on the Mask
+        mask = cv2.GaussianBlur(mask,(5,5),100) 
         
         #Find Contours
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
