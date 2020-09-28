@@ -5,7 +5,7 @@ from cv2 import cv2
 # whether cropping is being performed or not
 refPt = []
 cropping = False
-image = None
+current_frame = None
 
 def readimage(path):
     print(f'readimage({path})')
@@ -116,7 +116,8 @@ def video_display(video_path):
     cap.release()
     cv2.destroyAllWindows()
 
-def display(video_path):
+def display(video_path = None):
+    file_count = 0
     if video_path is not None:
         cap = cv2.VideoCapture(video_path)
     else:
@@ -141,13 +142,13 @@ def display(video_path):
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # Smoothing without removing edges.
-            gray_filtered = cv2.bilateralFilter(gray, 7, 50, 50)
+            gray_filtered = cv2.bilateralFilter(gray, 7, 75, 75)
             
             # Extract the foreground
             foreground = fgbg.apply(gray_filtered)
             
             # Smooth out to get the moving area
-            kernel = np.ones((50,50),np.uint8)
+            kernel = np.ones((10,10),np.uint8)
 
             foreground_morph = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel)
 
@@ -157,13 +158,12 @@ def display(video_path):
             cropped_edges = (foreground_morph // 255) * edges_filtered
 
             #EXPERIMENTAl
-            edges_and_foreground = np.add(cropped_edges, foreground)
+            layered_frames = np.add(cropped_edges, foreground_morph)
 
             # Stacking the images to print them together
             # For comparison
             frames_normal = np.hstack(( gray,  gray_filtered))
             frames_edges = np.hstack((edges_filtered,  cropped_edges))
-            layered_frames = edges_and_foreground
 
             # Display the resulting frame
             cv2.imshow('Normal Frames', frames_normal)
@@ -171,6 +171,9 @@ def display(video_path):
             cv2.imshow('Foreground Frames', foreground)
             cv2.imshow('layered Frames', layered_frames)
             cv2.imshow('MorphologyEx', foreground_morph)
+
+            # cv2.imwrite('./templates/layered_frames/test_template' + str(file_count) + '.png', layered_frames)
+            file_count += 1
 
             # Press Q on keyboard to  exit
             if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -188,7 +191,7 @@ def display(video_path):
 
 def click_and_crop(event, x, y, flags, param):
 	# grab references to the global variables
-	global refPt, cropping, image
+	global refPt, cropping, current_frame
 	# if the left mouse button was clicked, record the starting
 	# (x, y) coordinates and indicate that cropping is being
 	# performed
@@ -202,8 +205,8 @@ def click_and_crop(event, x, y, flags, param):
 		refPt.append((x, y))
 		cropping = False
 		# draw a rectangle around the region of interest
-		cv2.rectangle(image, refPt[0], refPt[1], (0, 255, 0), 2)
-		cv2.imshow("image", image)
+		cv2.rectangle(current_frame, refPt[0], refPt[1], (0, 255, 0), 2)
+		cv2.imshow("current_frame", current_frame)
 
 def crop_template():
     global refPt, cropping
@@ -236,8 +239,10 @@ def crop_template():
 def main():
     print('main()')
     # image_display_test('test_image.jpeg')
-    # display('./fall_samples/fall-01-cam0.mp4')
-    display(None)
+    
+    display('./fall_samples/fall-01-cam0.mp4')
+    
+    # display()
     # crop_template()
     
 if __name__ == '__main__':
