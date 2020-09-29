@@ -1,8 +1,7 @@
 import numpy as np
 from cv2 import cv2
 
- # initialize the list of reference points and boolean indicating
-# whether cropping is being performed or not
+
 refPt = []
 cropping = False
 current_frame = None
@@ -26,98 +25,17 @@ def show_image(source):
             break
     return cv2.destroyAllWindows()
 
-def frame_difference(frame, previous_frame):
-    frame = frame.astype('int16')
-    previous_frame = previous_frame.astype('int16')
-    diff_frame = np.zeros_like(frame)
-
-    if frame.shape == previous_frame.shape:
-        diff_frame = np.absolute(np.subtract(frame, previous_frame))
-
-    diff_frame = diff_frame.astype('uint8')
-    return diff_frame
-
-def transform_binary(frame):
-    im_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    (thresh, im_bw) = cv2.threshold(im_gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    return im_bw
-
 # displays image from file
 def image_display_test(image_path):
-    print('test0()')
+    print('image_display_test()')
     image_bytes = readimage(image_path)
     img = byteStr_to_image(image_bytes)
     print('OpenCV:\n', img)
     show_image(img)
 
-# Demonstrates calculating frame difference, displays binary image
-def original_frame_difference_calculator():
-    cap = cv2.VideoCapture(cv2.CAP_DSHOW)
-    previous_frame = None
-
-    if not cap.isOpened():
-        raise  IOError("Cannot open webcam")
-
-    while(True):
-        ret, frame = cap.read()
-        if ret == True:
-            edges = cv2.Canny(frame, 480, 640)
-            display_img = frame
-            if previous_frame is not None:
-                display_img = frame_difference(frame, previous_frame)
-            
-            display_img = transform_binary(display_img)
-            
-            cv2.imshow('edges', edges)
-            cv2.imshow('display', display_img)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        previous_frame = frame
-    cap.release()
-    cv2.destroyAllWindows()
-
-def video_display(video_path):
-    previous_frame = None
-    cap = cv2.VideoCapture(video_path)
-
-    target = 0
-    counter = 0
-    file_count = 0
-    while(True):
-        if counter == target:
-            ret, frame = cap.read()
-            if ret == True:
-                binary_subtraction_img = frame
-                if previous_frame is not None:
-                    binary_subtraction_img = frame_difference(frame, previous_frame)
-                
-                binary_subtraction_img = transform_binary(binary_subtraction_img)
-
-                edges = cv2.Canny(frame, 640, 240)
-
-                cv2.imshow('edges', edges)
-                cv2.imshow('mask', binary_subtraction_img)
-                cv2.imshow('original', frame)
-                cv2.imwrite('./templates/background_subtraction/test_template' + str(file_count) + '.png', binary_subtraction_img)
-                cv2.imwrite('./templates/edge_detection/test_template' + str(file_count) + '.png', edges)
-                
-                previous_frame = frame
-                file_count +=1
-                counter = 0
-        else:
-            ret = cap.grab()
-            counter += 1
-        
-        
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    
-    cap.release()
-    cv2.destroyAllWindows()
-
 def display(video_path = None):
     file_count = 0
+    
     if video_path is not None:
         cap = cv2.VideoCapture(video_path)
     else:
@@ -148,7 +66,7 @@ def display(video_path = None):
             foreground = fgbg.apply(gray_filtered)
             
             # Smooth out to get the moving area
-            kernel = np.ones((10,10),np.uint8)
+            kernel = np.ones((6,6),np.uint8)
 
             foreground_morph = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel)
 
@@ -172,7 +90,7 @@ def display(video_path = None):
             cv2.imshow('layered Frames', layered_frames)
             cv2.imshow('MorphologyEx', foreground_morph)
 
-            # cv2.imwrite('./templates/layered_frames/test_template' + str(file_count) + '.png', layered_frames)
+            cv2.imwrite('./templates/layered_frames/test_template' + str(file_count) + '.png', layered_frames)
             file_count += 1
 
             # Press Q on keyboard to  exit
@@ -190,7 +108,6 @@ def display(video_path = None):
     cv2.destroyAllWindows()
 
 def click_and_crop(event, x, y, flags, param):
-	# grab references to the global variables
 	global refPt, cropping, current_frame
 	# if the left mouse button was clicked, record the starting
 	# (x, y) coordinates and indicate that cropping is being
@@ -205,45 +122,101 @@ def click_and_crop(event, x, y, flags, param):
 		refPt.append((x, y))
 		cropping = False
 		# draw a rectangle around the region of interest
-		cv2.rectangle(current_frame, refPt[0], refPt[1], (0, 255, 0), 2)
-		cv2.imshow("current_frame", current_frame)
+        # TODO: Display rectangle in current frame without it affecting the 'original_frame'.
+		cv2.rectangle(current_frame, refPt[0], refPt[1], (0, 255, 0),2)
+		# cv2.imshow("current_frame", current_frame)
 
 def crop_template():
-    global refPt, cropping
-    image_path = 'test_image.jpeg'
-    image = cv2.imread(image_path)
-    # load the image, clone it, and setup the mouse callback function
-    clone = image.copy()
-    cv2.namedWindow("image")
-    cv2.setMouseCallback("image", click_and_crop)
-    # keep looping until the 'q' key is pressed
+    global refPt, cropping, current_frame
+    template_types = ['upright', 'falling', 'sitting', 'lying']
+    template_type = None
+    file_count = 0
+    roi = np.array([])
+
+    cv2.namedWindow("current_frame")
+    cv2.setMouseCallback("current_frame", click_and_crop)
+    
+    image_path = f'./templates/layered_frames/test_template{file_count}.png'
+    current_frame = cv2.imread(image_path)
+    original_frame = np.copy(current_frame)
+
+    print("""
+            Click the key to save the 'ROI' as a template
+            Option:    Template Type:
+            1----------Upright
+            2----------Falling
+            3----------Sitting Down
+            4----------Lying Down      
+            """)
+
     while True:
-        # display the image and wait for a keypress
-        cv2.imshow("image", image)
+        if cropping == True:
+            current_frame = original_frame
+
+        cv2.imshow("current_frame", current_frame)    
+        cv2.imshow('original_frame', original_frame)    
+        
+        if len(refPt) == 2:
+            # refPt = [[x1, y1], [x2, y2]]
+            x1 = refPt[0][0]
+            x2 = refPt[1][0]
+            y1 = refPt[0][1]
+            y2 = refPt[1][1]
+            if ((y1 != y2) & (x1 != x2)):
+
+                if ((y1 < y2) &(x1 < x2)):
+                    roi = np.copy(original_frame[y1:y2, x1:x2])
+                if ((y1 > y2) &(x1 < x2)):
+                    roi = np.copy(original_frame[y2:y1, x1:x2])
+                if ((y1 < y2) &(x1 > x2)):
+                    roi = np.copy(original_frame[y1:y2, x2:x1])
+                if ((y1 > y2) &(x1 > x2)):
+                    roi = np.copy(original_frame[y2:y1, x2:x1])
+                # TODO: resize ROI so that it doesn't display previous ROI image data.
+                cv2.imshow("ROI", roi)
+
         key = cv2.waitKey(1) & 0xFF
-        # if the 'r' key is pressed, reset the cropping region
-        if key == ord("r"):
-            image = clone.copy()
-        # if the 'c' key is pressed, break from the loop
-        elif key == ord("c"):
+        
+        if key == ord('['):
+            if file_count != 0:
+                file_count -= 1
+                image_path = f'./templates/layered_frames/test_template{file_count}.png'
+                current_frame = cv2.imread(image_path)
+                original_frame = current_frame.copy()
+
+        elif key == ord(']'):
+            # TODO: fix to where it doesn't access files out of range
+            file_count += 1
+            image_path = f'./templates/layered_frames/test_template{file_count}.png'
+            current_frame = cv2.imread(image_path)
+            original_frame = current_frame.copy()
+        
+        elif key == ord('q'):
             break
-    # if there are two reference points, then crop the region of interest
-    # from teh image and display it
-    if len(refPt) == 2:
-        roi = clone[refPt[0][1]:refPt[1][1], refPt[0][0]:refPt[1][0]]
-        cv2.imshow("ROI", roi)
-        cv2.waitKey(0)
-    # close all open windows
+    
+        # keys to save a template
+        if roi.size != 0:
+            if key == ord('1'):
+                template_type = template_types[0]
+                cv2.imwrite(f'./templates/cropped_templates/{template_type}{file_count}.png', roi)
+            elif key == ord('2'):
+                template_type = template_types[1]
+                cv2.imwrite(f'./templates/cropped_templates/{template_type}{file_count}.png', roi)
+            elif key == ord('3'):
+                template_type = template_types[2]
+                cv2.imwrite(f'./templates/cropped_templates/{template_type}{file_count}.png', roi)
+            elif key == ord('4'):
+                template_type = template_types[3]
+                cv2.imwrite(f'./templates/cropped_templates/{template_type}{file_count}.png', roi)
+        
     cv2.destroyAllWindows()
 
 def main():
     print('main()')
     # image_display_test('test_image.jpeg')
-    
-    display('./fall_samples/fall-01-cam0.mp4')
-    
+    # display('./fall_samples/fall-01-cam0.mp4')
     # display()
-    # crop_template()
+    crop_template()
     
 if __name__ == '__main__':
     main()
