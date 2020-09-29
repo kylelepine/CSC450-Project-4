@@ -66,9 +66,11 @@ def display(video_path = None):
             foreground = fgbg.apply(gray_filtered)
             
             # Smooth out to get the moving area
-            kernel = np.ones((6,6),np.uint8)
+            kernel_close = np.ones((9,9),np.uint8)
+            kernel_open = np.ones((10,10),np.uint8)
 
-            foreground_morph = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel)
+            foreground_morph = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)
+            foreground_morph = cv2.morphologyEx(foreground_morph, cv2.MORPH_OPEN, kernel_open)
 
             edges_filtered = cv2.Canny(gray_filtered, 60, 120)
 
@@ -214,7 +216,7 @@ def crop_template():
 def main():
     print('main()')
     # image_display_test('test_image.jpeg')
-    # display('./fall_samples/fall-01-cam0.mp4')
+    display('./fall_samples/fall-01-cam0.mp4')
     # display()
     crop_template()
     
