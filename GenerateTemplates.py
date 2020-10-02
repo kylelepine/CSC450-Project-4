@@ -66,31 +66,35 @@ def display(video_path = None):
             foreground = fgbg.apply(gray_filtered)
             
             # Smooth out to get the moving area
-            kernel_close = np.ones((9,9),np.uint8)
+            kernel_close = np.ones((10,10),np.uint8)
             kernel_open = np.ones((10,10),np.uint8)
+            kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
 
-            foreground_morph = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)
-            foreground_morph = cv2.morphologyEx(foreground_morph, cv2.MORPH_OPEN, kernel_open)
+            foreground_morph_close = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)
+            foreground_morph_open = cv2.morphologyEx(foreground_morph_close, cv2.MORPH_OPEN, kernel_open)
+            foreground_morph_close = cv2.morphologyEx(foreground_morph_open, cv2.MORPH_CLOSE, kernel_close)
+            foreground_morph_dilate = cv2.dilate(foreground_morph_close,kernel_dilate,iterations = 1)
 
             edges_filtered = cv2.Canny(gray_filtered, 60, 120)
 
             # Crop off the edges out of the moving area
-            cropped_edges = (foreground_morph // 255) * edges_filtered
+            cropped_edges = (foreground_morph_dilate // 255) * edges_filtered
 
             #EXPERIMENTAl
-            layered_frames = np.add(cropped_edges, foreground_morph)
+            layered_frames = np.add(cropped_edges, foreground_morph_dilate)
 
             # Stacking the images to print them together
             # For comparison
             frames_normal = np.hstack(( gray,  gray_filtered))
             frames_edges = np.hstack((edges_filtered,  cropped_edges))
+            foreground_morphs = np.hstack((foreground_morph_close, foreground_morph_open))
 
             # Display the resulting frame
             cv2.imshow('Normal Frames', frames_normal)
             cv2.imshow('Frames Edges', frames_edges)
             cv2.imshow('Foreground Frames', foreground)
+            cv2.imshow('foreground_morphs', foreground_morphs)
             cv2.imshow('layered Frames', layered_frames)
-            cv2.imshow('MorphologyEx', foreground_morph)
 
             cv2.imwrite('./templates/layered_frames/test_template' + str(file_count) + '.png', layered_frames)
             file_count += 1
@@ -108,6 +112,42 @@ def display(video_path = None):
     
     # Closes all the frames
     cv2.destroyAllWindows()
+
+def compare_template_to_frame(template_path, frame_path):
+    print('compare_template_to_frame()')
+    template = cv2.imread(template_path)
+    frame = cv2.imread(frame_path)
+    print(template.shape)
+    row_difference = frame.shape[0] - template.shape[0] 
+    column_difference = frame.shape[1] - template.shape[1]  
+    n = 0
+    highest_similarity = 0.0
+    for starting_ypoint in range(0, row_difference + 1 ,template.shape[1]//4):
+        for starting_xpoint in range(0, column_difference + 1,template.shape[1]//4):
+            n += 1
+            temp = image_compare(frame, template, (starting_ypoint, starting_xpoint))
+            if temp > highest_similarity:
+                highest_similarity = temp
+    print(f'n: {n} comparisons')
+    print(f'highest_similarity_percent: {highest_similarity}')
+    
+def image_compare(source, comparison, starting_point):
+    # print('image_compare()')
+    common_pixels = 0
+    total_pixels_compared = comparison.shape[0] * comparison.shape[1]
+    similarity_percent = 0.0
+    
+    for y in range(starting_point[0], starting_point[0] + comparison.shape[0], 1):
+        for x in range(starting_point[1], starting_point[1]+ comparison.shape[1], 1):
+            
+            comp_x = x - starting_point[1]
+            comp_y = y - starting_point[0]
+            if (source[y][x] == comparison[comp_y][comp_x]).all():
+                common_pixels += 1
+            
+    similarity_percent = common_pixels/total_pixels_compared * 100
+    
+    return similarity_percent
 
 def click_and_crop(event, x, y, flags, param):
 	global refPt, cropping, current_frame
@@ -213,13 +253,42 @@ def crop_template():
         
     cv2.destroyAllWindows()
 
+def User_interface():
+    
+    while True:
+        print("""
+        Command:(button)              Description:
+        view_video:(1)                Displays available videos in 'fall_samples' with computer vision.
+        view_webcam:(2)               Displays connected webcam with computer vision
+        crop_templates:(3)            Allows user to crop templates that exist in 'templates/layered_frames'.
+        compare_template:(4)          Demonstrates comparing a template to a frame.
+        quit:(q)
+        """)
+        command = input("Command: ")
+        if command == '1':
+            available_videos = ['./fall_samples/fall-01-cam0.mp4', './fall_samples/fall-27-cam0.mp4']
+            print("Please choose from: ")
+            i = 0
+            for video in available_videos:
+                print(str(i) + video)
+                i+=1
+            selection = int(input("Enter: "))
+            display(available_videos[selection])
+
+        elif command == '2':
+            display()
+        elif command == '3':
+            crop_template()
+        elif command == '4':
+            compare_template_to_frame('./templates/cropped_templates/falling69.png', './templates/layered_frames/test_template69.png')
+        elif command == 'q':
+            break
+        else:
+            print("incorrect command.")
 def main():
     print('main()')
-    # image_display_test('test_image.jpeg')
-    display('./fall_samples/fall-01-cam0.mp4')
-    # display()
-    crop_template()
-    
+    User_interface()
+
 if __name__ == '__main__':
     main()
     
