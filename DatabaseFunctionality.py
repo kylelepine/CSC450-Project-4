@@ -1,6 +1,5 @@
 import psycopg2
 
-
 conn = None
 standing_array = []
 falling_array = []

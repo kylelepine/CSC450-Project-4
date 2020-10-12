@@ -5,9 +5,7 @@ from cv2 import cv2
 import GenerateTemplates
 import DatabaseFunctionality
 
-refPt = []
-cropping = False
-current_frame = None
+templates = {}
 
 def readimage(path):
     print(f'readimage({path})')
@@ -58,16 +56,12 @@ def display(video_path = None):
         # Capture frame-by-frame
         ret, frame = cap.read()
         if ret == True:
-        
             # Converting the image to grayscale.
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
             # Smoothing without removing edges.
             gray_filtered = cv2.bilateralFilter(gray, 7, 75, 75)
-            
             # Extract the foreground
-            foreground = fgbg.apply(gray_filtered)
-            
+            foreground = fgbg.apply(gray_filtered) 
             # Smooth out to get the moving area
             kernel_close = np.ones((10,10),np.uint8)
             kernel_open = np.ones((10,10),np.uint8)
@@ -79,19 +73,15 @@ def display(video_path = None):
             foreground_morph_dilate = cv2.dilate(foreground_morph_close,kernel_dilate,iterations = 1)
 
             edges_filtered = cv2.Canny(gray_filtered, 60, 120)
-
             # Crop off the edges out of the moving area
             cropped_edges = (foreground_morph_dilate // 255) * edges_filtered
-
             #EXPERIMENTAl
             layered_frames = np.add(cropped_edges, foreground_morph_dilate)
-
             # Stacking the images to print them together
             # For comparison
             frames_normal = np.hstack(( gray,  gray_filtered))
             frames_edges = np.hstack((edges_filtered,  cropped_edges))
             foreground_morphs = np.hstack((foreground_morph_close, foreground_morph_open))
-
             # Display the resulting frame
             cv2.imshow('Normal Frames', frames_normal)
             cv2.imshow('Frames Edges', frames_edges)
@@ -101,18 +91,14 @@ def display(video_path = None):
 
             cv2.imwrite('./templates/layered_frames/test_template' + str(file_count) + '.png', layered_frames)
             file_count += 1
-
             # Press Q on keyboard to  exit
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
-        
         # Break the loop
         else: 
             break
-    
     # When everything done, release the video capture object
     cap.release()
-    
     # Closes all the frames
     cv2.destroyAllWindows()
 
@@ -149,7 +135,6 @@ def image_compare(source, comparison, starting_point):
                 common_pixels += 1
             
     similarity_percent = common_pixels/total_pixels_compared * 100
-    
     return similarity_percent
 
 def User_interface():
@@ -161,6 +146,7 @@ def User_interface():
         view_webcam:(2)               Displays connected webcam with computer vision
         crop_templates:(3)            Allows user to crop templates that exist in 'templates/layered_frames'.
         compare_template:(4)          Demonstrates comparing a template to a frame.
+        database:(5)                  Access Database UI.
         quit:(q)
         """)
         command = input("Command: ")
@@ -173,19 +159,34 @@ def User_interface():
                 i+=1
             selection = int(input("Enter: "))
             display(available_videos[selection])
-
         elif command == '2':
             display()
         elif command == '3':
-            GenerateTemplates.crop_template()
+            template_generator = GenerateTemplates.template_generator()
+            template_generator.crop_template()
         elif command == '4':
             compare_template_to_frame('./templates/cropped_templates/falling69.png', './templates/layered_frames/test_template69.png')
+        elif command == '5':
+            DatabaseFunctionality.user_interface()
         elif command == 'q':
             break
         else:
             print("incorrect command.")
+
+def load_templates():
+    global templates
+    dbname = 'CSC-450_FDS'
+    pword = 'Apcid28;6jdn'
+    database = DatabaseFunctionality.FDSDatabase(dbname, pword)
+    database.connect()
+    templates = database.load_template_dictionary()
+
 def main():
-    print('main()')
+    print('Starting FDSystem')
+    load_templates()
+    # test_byte_str = templates['upright'][0]
+    # img = byteStr_to_image(test_byte_str)
+    # show_image(img)
     User_interface()
 
 if __name__ == '__main__':
