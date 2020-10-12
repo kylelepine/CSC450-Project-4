@@ -34,9 +34,11 @@ def image_display_test(image_path):
     print('OpenCV:\n', img)
     show_image(img)
 
-def display(video_path = None):
+def display(video_path = None, save_template = False):
     file_count = 0
-    
+    if save_template:
+        print("Saving frames as template")
+
     if video_path is not None:
         cap = cv2.VideoCapture(video_path)
     else:
@@ -50,7 +52,7 @@ def display(video_path = None):
         history=10,
         varThreshold=2,
         detectShadows=False)
-
+    print("Click '1' to start saving templates. They will be autmatically cropped to the contour detection bounding box.")
     # Read the video
     while(cap.isOpened()):
         # Capture frame-by-frame
@@ -75,25 +77,62 @@ def display(video_path = None):
             edges_filtered = cv2.Canny(gray_filtered, 60, 120)
             # Crop off the edges out of the moving area
             cropped_edges = (foreground_morph_dilate // 255) * edges_filtered
+
+
             #EXPERIMENTAl
             layered_frames = np.add(cropped_edges, foreground_morph_dilate)
+            # image splice by contour detection
+            r, thresh = cv2.threshold(layered_frames, 91, 255, cv2.THRESH_BINARY)
+            contours = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2]
+            contour_frame = frame.copy()
+            spliced_frame = contour_frame.copy()
+            if len(contours) != 0:
+                contour = max(contours, key = cv2.contourArea)
+                x_pos, y_pos, width, height = cv2.boundingRect(contour)
+                buffer_space = 40
+                box_area = (width * x_pos) * (height * y_pos)
+                min_area = 10000
+                if (abs(box_area) > min_area):
+                    if(width - x_pos + buffer_space > height - y_pos):
+                        spliced_frame = np.copy(layered_frames[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        cv2.rectangle(contour_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 0, 255), 2)
+                        
+                    else:
+                        spliced_frame = np.copy(layered_frames[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        cv2.rectangle(contour_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 255, 0), 2)
+            
             # Stacking the images to print them together
             # For comparison
-            frames_normal = np.hstack(( gray,  gray_filtered))
-            frames_edges = np.hstack((edges_filtered,  cropped_edges))
+            gray_frames = np.hstack(( gray,  gray_filtered))
+            edge_detection_frames = np.hstack((edges_filtered,  cropped_edges))
             foreground_morphs = np.hstack((foreground_morph_close, foreground_morph_open))
+            
             # Display the resulting frame
-            cv2.imshow('Normal Frames', frames_normal)
-            cv2.imshow('Frames Edges', frames_edges)
-            cv2.imshow('Foreground Frames', foreground)
+            cv2.imshow('gray_frames', gray_frames)
+            cv2.imshow('edge_detection_frames', edge_detection_frames)
+            cv2.imshow('Foreground Detection', foreground)
             cv2.imshow('foreground_morphs', foreground_morphs)
-            cv2.imshow('layered Frames', layered_frames)
+            cv2.imshow('layered_frames', layered_frames)
+            cv2.imshow('contour frame', contour_frame)
+            cv2.imshow('spliced_frame', spliced_frame)
 
-            cv2.imwrite('./templates/layered_frames/test_template' + str(file_count) + '.png', layered_frames)
-            file_count += 1
-            # Press Q on keyboard to  exit
-            if cv2.waitKey(25) & 0xFF == ord('q'):
+            if save_template:
+                save_path_frame = f"./templates/layered_frames/ {'webcam' if video_path is None else video_path[15:-4]}_{str(file_count)}.png"
+                save_path_template = f"./templates/cropped_templates/ {'webcam' if video_path is None else video_path[15:-4]}_{str(file_count)}.png"
+                # print(save_path)
+                cv2.imwrite(save_path_frame, layered_frames)
+                cv2.imwrite(save_path_template, spliced_frame)
+                file_count += 1
+
+            # controls
+            key = cv2.waitKey(25) & 0xFF
+            # Press Q on keyboard to exit
+            if key == ord('q'):
                 break
+            # save frame as template
+            elif key == ord('1'):
+                save_template = not save_template
+                print('save_template: {save_template}')
         # Break the loop
         else: 
             break
@@ -121,7 +160,6 @@ def compare_template_to_frame(template_path, frame_path):
     print(f'highest_similarity_percent: {highest_similarity}')
     
 def image_compare(source, comparison, starting_point):
-    # print('image_compare()')
     common_pixels = 0
     total_pixels_compared = comparison.shape[0] * comparison.shape[1]
     similarity_percent = 0.0
@@ -158,13 +196,16 @@ def User_interface():
                 print(str(i) + video)
                 i+=1
             selection = int(input("Enter: "))
-            display(available_videos[selection])
+            print("Would you like to save the frames as templates?(y/n):")
+            save_templates = input()
+            save_templates = True if save_templates == 'y' else False
+            display(available_videos[selection], save_templates)
         elif command == '2':
             display()
         elif command == '3':
             template_generator = GenerateTemplates.template_generator()
             template_generator.crop_template()
-        elif command == '4':
+        elif command == '4': 
             compare_template_to_frame('./templates/cropped_templates/falling69.png', './templates/layered_frames/test_template69.png')
         elif command == '5':
             DatabaseFunctionality.user_interface()
