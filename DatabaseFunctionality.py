@@ -1,5 +1,6 @@
 import psycopg2
-
+import numpy as np
+from cv2 import cv2
 # Database credentials 
 dbname = 'CSC-450_FDS'
 pword = 'Apcid28;6jdn'
@@ -7,7 +8,11 @@ pword = 'Apcid28;6jdn'
 # Database class to handle pgfunctionality
 class FDSDatabase:
     conn = None
-    template_dictionary = {}
+    
+    template_types = ['upright', 'falling', 'sitting', 'lying']
+    template_characteristics = ['edge', 'foreground']
+    template_dictionary = {'edge': {}, 'foreground': {}}
+
     def __init__(self, name, pw):
         self.dbname = name
         self.pword = pw
@@ -47,15 +52,15 @@ class FDSDatabase:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
-    def add_template(self, template_type, image_name, image_byte_array):
+    def add_template(self, template_type, template_characteristic, image_name, image_byte_array):
         #TODO: add functionality to extract image_name from path.
         #      Maybe find last '/' and have name = what's left.
         try:
             curr = self.conn.cursor()
             print("adding template...")
             curr.execute('''
-            INSERT INTO template (template_type, image_name, image)
-            VALUES(%s, %s, %s)''', (template_type, image_name, image_byte_array))
+            INSERT INTO template (template_type, template_characteristic, image_name, image)
+            VALUES(%s, %s, %s, %s)''', (template_type, template_characteristic, image_name, image_byte_array))
             print("Updating template table...")
             curr.execute('''
             UPDATE template
@@ -88,43 +93,38 @@ class FDSDatabase:
             FROM template
             WHERE template_id = %s
             ''', (template_id,))
-            mview = curr.fetchone()
-            image = mview[0].tobytes()
-            print("First 10 bytes: " + str(image[:10]))
+            template_bytes = curr.fetchone()
+            template = byte_str_to_image_array(template_bytes[0].tobytes())
             curr.close()
-            return image
+            return template
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
         
-    def access_all_image_by_type(self, template_type):
+    def access_all_image_by_type_and_chr(self, template_type, characteristic):
         try:
             curr = self.conn.cursor()
             curr.execute('''
             SELECT image
             FROM template
-            WHERE template_type = %s
-            ''', (template_type,))
+            WHERE (template_type = %s) AND (template_characteristic = %s)
+            ''', (template_type, characteristic))
             rows = curr.fetchall()
             template_type_array = []
             for row in rows:
-                template_type_array.append(row[0].tobytes())
+                template_bytes = row[0].tobytes()
+                template = byte_str_to_image_array(template_bytes)
+                template_type_array.append(template)
+                
             curr.close()
-            print(f"Successfully loaded {template_type} array.")
+            print(f"Successfully loaded {characteristic} {template_type} array.")
             return template_type_array
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
     def load_template_dictionary(self):
-        upright_array = self.access_all_image_by_type("upright")
-        falling_array = self.access_all_image_by_type("falling")
-        sitting_array = self.access_all_image_by_type("sitting")
-        lying_array = self.access_all_image_by_type("lying")
-
-        self.template_dictionary['upright'] = upright_array
-        self.template_dictionary['falling'] = falling_array
-        self.template_dictionary['sitting'] = sitting_array
-        self.template_dictionary['lying'] = lying_array
-        
+        for template_type in self.template_types:
+            for characteristic in self.template_characteristics:
+                self.template_dictionary[characteristic][template_type] = self.access_all_image_by_type_and_chr(template_type, characteristic)
         return self.template_dictionary
 
 # Functions
@@ -170,9 +170,12 @@ def manage_database_menu(database):
             print(f"{command} selected.")
             image_path = input("Please enter the path of the image: ")
             template_type = input("Please enter the template_type: ")
+            template_characteristic = input("Please enter template_characteristic: ")
             verify_image_path(image_path)
-            image_byte_array = read_image_to_byte_array(image_path)
-            database.add_template(template_type, image_path, image_byte_array)
+            image_name_byte_array = read_image_to_byte_array(image_path)
+            image_name = image_name_byte_array[0]
+            image_byte_array = image_name_byte_array[1]
+            database.add_template(template_type, template_characteristic, image_name, image_byte_array)
         elif command == "2":
             print(f"{command} selected.")
             delete_template_id = input("Enter the template_id you wish to delete: ")
@@ -190,13 +193,20 @@ def manage_database_menu(database):
             print(f"{command} is not a valid command.\nPlease try again.")
 
 def read_image_to_byte_array(image_path):
+    file_path = image_path.split('/')
+    filename = file_path[-1]
     with open(image_path, 'rb') as f:
         b = bytearray(f.read())
-        return b
+        return (filename,b)
 
 def verify_image_path(image_path):
     #TODO: add functionality to verify an image.
     print("Image verified.")
+
+def byte_str_to_image_array(source_str):
+    print('byteStr_to_image')
+    decoded = cv2.imdecode(np.frombuffer(source_str, np.uint8), -1)
+    return decoded
 
 def quit_application(database):
     print("quit_application() called")

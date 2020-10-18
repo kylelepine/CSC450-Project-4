@@ -1,5 +1,6 @@
 import numpy as np
 from cv2 import cv2
+from timeit import default_timer as timer
 
 # Our moduels
 import GenerateTemplates
@@ -7,15 +8,10 @@ import DatabaseFunctionality
 
 templates = {}
 
-def readimage(path):
+def read_img_path_as_byte_str(path):
     print(f'readimage({path})')
     with open(path, 'rb') as f:
         return f.read()
-
-def byteStr_to_image(source_str):
-    print('byteStr_to_image')
-    decoded = cv2.imdecode(np.frombuffer(source_str, np.uint8), -1)
-    return decoded
 
 def show_image(source):
     print('show_image()')
@@ -26,16 +22,21 @@ def show_image(source):
             break
     return cv2.destroyAllWindows()
 
+def byte_str_to_image_array(source_str):
+    print('byteStr_to_image')
+    decoded = cv2.imdecode(np.frombuffer(source_str, np.uint8), -1)
+    return decoded
+
 # displays image from file
 def image_display_test(image_path):
     print('image_display_test()')
-    image_bytes = readimage(image_path)
-    img = byteStr_to_image(image_bytes)
+    image_bytes = read_img_path_as_byte_str(image_path)
+    img = byte_str_to_image_array(image_bytes)
     print('OpenCV:\n', img)
     show_image(img)
 
-def display(video_path = None, save_template = False):
-    file_count = 0
+def display(video_path = None, save_template = False, check_template = True):
+    frame_count = 0
     if save_template:
         print("Saving frames as template")
 
@@ -81,25 +82,38 @@ def display(video_path = None, save_template = False):
 
             #EXPERIMENTAl
             layered_frames = np.add(cropped_edges, foreground_morph_dilate)
-            # image splice by contour detection
-            r, thresh = cv2.threshold(layered_frames, 91, 255, cv2.THRESH_BINARY)
-            contours = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2]
+
+            # image splice by contour detection for foreground
+            ret_fg, thresh_fg = cv2.threshold(layered_frames, 91, 255, cv2.THRESH_BINARY)
+            contours_foreground = cv2.findContours(thresh_fg, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2]
             contour_frame = frame.copy()
-            spliced_frame = contour_frame.copy()
-            if len(contours) != 0:
-                contour = max(contours, key = cv2.contourArea)
+            spliced_foreground_frame = contour_frame.copy()
+            spliced_edge_frame = contour_frame.copy()
+            if len(contours_foreground) != 0:
+                contour = max(contours_foreground, key = cv2.contourArea)
                 x_pos, y_pos, width, height = cv2.boundingRect(contour)
                 buffer_space = 40
                 box_area = (width * x_pos) * (height * y_pos)
                 min_area = 10000
                 if (abs(box_area) > min_area):
                     if(width - x_pos + buffer_space > height - y_pos):
-                        spliced_frame = np.copy(layered_frames[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        spliced_edge_frame = np.copy(cropped_edges[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        spliced_foreground_frame = np.copy(foreground_morph_dilate[y_pos:(y_pos + height), x_pos:(x_pos + width)])
                         cv2.rectangle(contour_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 0, 255), 2)
                         
                     else:
-                        spliced_frame = np.copy(layered_frames[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        spliced_edge_frame = np.copy(cropped_edges[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        spliced_foreground_frame = np.copy(foreground_morph_dilate[y_pos:(y_pos + height), x_pos:(x_pos + width)])
                         cv2.rectangle(contour_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 255, 0), 2)
+            
+            if check_template:
+                if spliced_foreground_frame.shape != frame.shape:
+                    comp_start = timer()
+                    highest_similarity = compare_template_to_frame(templates['edge']['upright'][0], spliced_foreground_frame)
+                    comp_end = timer()
+                    if highest_similarity > 50:
+                        print(f'highest_similarity_percent: {highest_similarity}')
+                        print(f"Compared in {comp_end-comp_start} seconds.")
             
             # Stacking the images to print them together
             # For comparison
@@ -107,22 +121,27 @@ def display(video_path = None, save_template = False):
             edge_detection_frames = np.hstack((edges_filtered,  cropped_edges))
             foreground_morphs = np.hstack((foreground_morph_close, foreground_morph_open))
             
-            # Display the resulting frame
-            cv2.imshow('gray_frames', gray_frames)
-            cv2.imshow('edge_detection_frames', edge_detection_frames)
-            cv2.imshow('Foreground Detection', foreground)
-            cv2.imshow('foreground_morphs', foreground_morphs)
-            cv2.imshow('layered_frames', layered_frames)
+            # # Display the resulting frame
+            # cv2.imshow('gray_frames', gray_frames)
+            # cv2.imshow('edge_detection_frames', edge_detection_frames)
+            # cv2.imshow('Foreground Detection', foreground)
+            # cv2.imshow('foreground_morphs', foreground_morphs)
+            # cv2.imshow('layered_frames', layered_frames)
             cv2.imshow('contour frame', contour_frame)
-            cv2.imshow('spliced_frame', spliced_frame)
+            # cv2.imshow('spliced_foreground_frame', spliced_foreground_frame)
+            # cv2.imshow('spliced_edge_frame', spliced_edge_frame)
 
             if save_template:
-                save_path_frame = f"./templates/layered_frames/ {'webcam' if video_path is None else video_path[15:-4]}_{str(file_count)}.png"
-                save_path_template = f"./templates/cropped_templates/ {'webcam' if video_path is None else video_path[15:-4]}_{str(file_count)}.png"
+                save_path_frame = f"./templates/layered_frames/{'webcam' if video_path is None else video_path[15:-4]}_{str(frame_count)}.png"
+                save_path_foreground_template = f"./templates/cropped_templates/foreground/{'webcam' if video_path is None else video_path[15:-4]}_{str(frame_count)}.png"
+                save_path_edge_template = f"./templates/cropped_templates/edges/{'webcam' if video_path is None else video_path[15:-4]}_{str(frame_count)}.png"
+
                 # print(save_path)
-                cv2.imwrite(save_path_frame, layered_frames)
-                cv2.imwrite(save_path_template, spliced_frame)
-                file_count += 1
+                cv2.imwrite(save_path_frame, foreground_morph_dilate)
+                if spliced_foreground_frame.shape != frame.shape:
+                    cv2.imwrite(save_path_foreground_template, spliced_foreground_frame)
+                    cv2.imwrite(save_path_edge_template, spliced_edge_frame)
+                frame_count += 1
 
             # controls
             key = cv2.waitKey(25) & 0xFF
@@ -132,7 +151,7 @@ def display(video_path = None, save_template = False):
             # save frame as template
             elif key == ord('1'):
                 save_template = not save_template
-                print('save_template: {save_template}')
+                print(f'save_template: {save_template}')
         # Break the loop
         else: 
             break
@@ -141,39 +160,48 @@ def display(video_path = None, save_template = False):
     # Closes all the frames
     cv2.destroyAllWindows()
 
-def compare_template_to_frame(template_path, frame_path):
-    print('compare_template_to_frame()')
-    template = cv2.imread(template_path)
-    frame = cv2.imread(frame_path)
-    print(template.shape)
-    row_difference = frame.shape[0] - template.shape[0] 
-    column_difference = frame.shape[1] - template.shape[1]  
-    n = 0
+def compare_template_to_frame(template, frame):
     highest_similarity = 0.0
-    for starting_ypoint in range(0, row_difference + 1 ,template.shape[1]//4):
-        for starting_xpoint in range(0, column_difference + 1,template.shape[1]//4):
-            n += 1
-            temp = image_compare(frame, template, (starting_ypoint, starting_xpoint))
-            if temp > highest_similarity:
-                highest_similarity = temp
-    print(f'n: {n} comparisons')
-    print(f'highest_similarity_percent: {highest_similarity}')
+    return highest_similarity
+
+# def compare_template_to_frame(template, frame):
+#     highest_similarity = 0.0
+#     # print('compare_template_to_frame()')
+#     # template = cv2.imread(template_path)
+#     # frame = cv2.imread(frame_path)
+#     # template_size = template.shape[0] * template.shape[1]
+#     # frame_size = frame.shape[0] * frame.shape[1]
+#     if template.shape[0] <= frame.shape[0]:
+#         if template.shape[1] <= frame.shape[1]:
+#             row_difference = frame.shape[0] - template.shape[0] 
+#             column_difference = frame.shape[1] - template.shape[1]  
+#             n = 0
+#             print(row_difference)
+#             print(column_difference)
+#             for starting_ypoint in range(0, row_difference + 1 ,template.shape[1]//2):
+#                 for starting_xpoint in range(0, column_difference + 1,template.shape[1]//2):
+#                     n += 1
+#                     temp = image_compare(frame, template, (starting_ypoint, starting_xpoint))
+#                     if temp > highest_similarity:
+#                         highest_similarity = temp
+#             print(f'comparisons: {n}')
+#     return highest_similarity
     
-def image_compare(source, comparison, starting_point):
-    common_pixels = 0
-    total_pixels_compared = comparison.shape[0] * comparison.shape[1]
-    similarity_percent = 0.0
+# def image_compare(source, comparison, starting_point):
+#     common_pixels = 0
+#     total_pixels_compared = comparison.shape[0] * comparison.shape[1]
+#     similarity_percent = 0.0
     
-    for y in range(starting_point[0], starting_point[0] + comparison.shape[0], 1):
-        for x in range(starting_point[1], starting_point[1]+ comparison.shape[1], 1):
+#     for y in range(starting_point[0], starting_point[0] + comparison.shape[0], 1):
+#         for x in range(starting_point[1], starting_point[1]+ comparison.shape[1], 1):
             
-            comp_x = x - starting_point[1]
-            comp_y = y - starting_point[0]
-            if (source[y][x] == comparison[comp_y][comp_x]).all():
-                common_pixels += 1
+#             comp_x = x - starting_point[1]
+#             comp_y = y - starting_point[0]
+#             if (source[y][x] == comparison[comp_y][comp_x]).all():
+#                 common_pixels += 1
             
-    similarity_percent = common_pixels/total_pixels_compared * 100
-    return similarity_percent
+#     similarity_percent = common_pixels/total_pixels_compared * 100
+#     return similarity_percent
 
 def User_interface():
     
@@ -195,20 +223,38 @@ def User_interface():
             for video in available_videos:
                 print(str(i) + video)
                 i+=1
-            selection = int(input("Enter: "))
-            print("Would you like to save the frames as templates?(y/n):")
-            save_templates = input()
-            save_templates = True if save_templates == 'y' else False
-            display(available_videos[selection], save_templates)
+            try:
+                selection = int(input("Enter: "))
+                if selection < i:
+                    print("Would you like to save the frames as templates?(y/n):")
+                    save_templates = input()
+                    save_templates = True if save_templates == 'y' else False
+                    print("Would you like to compare templates to video frame?(y/n):")
+                    check_templates = input()
+                    check_templates = True if check_templates == 'y' else False
+                    display(available_videos[selection], save_templates, check_templates)
+                else:
+                    print("Incorrect selection.")
+            except ValueError as error:
+                print(error)
         elif command == '2':
-            display()
+            display(None, False, False)
         elif command == '3':
             template_generator = GenerateTemplates.template_generator()
             template_generator.crop_template()
         elif command == '4': 
-            compare_template_to_frame('./templates/cropped_templates/falling69.png', './templates/layered_frames/test_template69.png')
+            comparison_template = templates['edge']['upright'][0]
+            # comparison_frame_str = read_img_path_as_byte_str('./templates/layered_frames/fall-01-cam0_75.png')
+            # comparison_frame = byte_str_to_image_array(comparison_frame_str)
+            comparison_frame = templates['edge']['upright'][0]
+            start = timer()
+            highest_similarity = compare_template_to_frame(comparison_template, comparison_frame)
+            end = timer()
+            print(f"Compared in {end-start} seconds.")
+            print(f'highest_similarity_percent: {highest_similarity}')
         elif command == '5':
             DatabaseFunctionality.user_interface()
+            load_templates()
         elif command == 'q':
             break
         else:
@@ -225,6 +271,7 @@ def load_templates():
 def main():
     print('Starting FDSystem')
     load_templates()
+    print(templates)
     # test_byte_str = templates['upright'][0]
     # img = byteStr_to_image(test_byte_str)
     # show_image(img)
