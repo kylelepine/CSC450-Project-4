@@ -1,10 +1,13 @@
 import numpy as np
 from cv2 import cv2
+import pandas as pd
 from timeit import default_timer as timer
 
 # Our moduels
 import GenerateTemplates
 import DatabaseFunctionality
+import CompareTemplates
+
 
 templates = {}
 
@@ -108,12 +111,15 @@ def display(video_path = None, save_template = False, check_template = True):
             
             if check_template:
                 if spliced_foreground_frame.shape != frame.shape:
-                    comp_start = timer()
-                    highest_similarity = compare_template_to_frame(templates['edge']['upright'][0], spliced_foreground_frame)
-                    comp_end = timer()
-                    if highest_similarity > 50:
-                        print(f'highest_similarity_percent: {highest_similarity}')
-                        print(f"Compared in {comp_end-comp_start} seconds.")
+                    # comp_start = timer()
+                    edge_classification = compare_templates_to_frame(templates['edge'], spliced_foreground_frame)
+                    foreground_classification = compare_templates_to_frame(templates['foreground'], spliced_foreground_frame)
+                    # comp_end = timer()
+                    if ((edge_classification == 'falling') | (foreground_classification == 'falling')):
+                        print("Fall Detected.")
+                    # print(f'edge_classification: {edge_classification}')
+                    # print(f'foreground_classification: {foreground_classification}')
+                    # print(f"Compared in {comp_end-comp_start} seconds.")
             
             # Stacking the images to print them together
             # For comparison
@@ -160,9 +166,22 @@ def display(video_path = None, save_template = False, check_template = True):
     # Closes all the frames
     cv2.destroyAllWindows()
 
-def compare_template_to_frame(template, frame):
-    highest_similarity = 0.0
-    return highest_similarity
+def compare_templates_to_frame(templates, frame):
+    classification = image_compare(templates, frame, (0,0))
+    return classification
+
+def image_compare(templates, frame, starting_point):
+    classification = None
+    template_tuple_list = []
+    template_types = ['upright', 'falling', 'sitting', 'lying']
+    for template_type in template_types:
+        for entry in templates[template_type]:
+            template_tuple_list.append(entry)
+    templates_dataset = pd.DataFrame(template_tuple_list, columns = ['class', 'image'])
+    # print(templates_dataset)
+    # print (frame)
+    classification = CompareTemplates.classify_knn(frame, templates_dataset)
+    return classification
 
 # def compare_template_to_frame(template, frame):
 #     highest_similarity = 0.0
@@ -243,15 +262,12 @@ def User_interface():
             template_generator = GenerateTemplates.template_generator()
             template_generator.crop_template()
         elif command == '4': 
-            comparison_template = templates['edge']['upright'][0]
-            # comparison_frame_str = read_img_path_as_byte_str('./templates/layered_frames/fall-01-cam0_75.png')
-            # comparison_frame = byte_str_to_image_array(comparison_frame_str)
-            comparison_frame = templates['edge']['upright'][0]
+            comparison_frame = templates['edge']['falling'][0][1]
             start = timer()
-            highest_similarity = compare_template_to_frame(comparison_template, comparison_frame)
+            classification = compare_templates_to_frame(templates['edge'], comparison_frame)
             end = timer()
             print(f"Compared in {end-start} seconds.")
-            print(f'highest_similarity_percent: {highest_similarity}')
+            print(f'classification: {classification}')
         elif command == '5':
             DatabaseFunctionality.user_interface()
             load_templates()
@@ -271,10 +287,6 @@ def load_templates():
 def main():
     print('Starting FDSystem')
     load_templates()
-    print(templates)
-    # test_byte_str = templates['upright'][0]
-    # img = byteStr_to_image(test_byte_str)
-    # show_image(img)
     User_interface()
 
 if __name__ == '__main__':

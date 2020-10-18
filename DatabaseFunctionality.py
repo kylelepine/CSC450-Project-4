@@ -28,7 +28,9 @@ class FDSDatabase:
         try:
             # Attempts to connect to server
             print("Connecting...")
-            self.conn = psycopg2.connect(host = 'localhost', database = self.dbname, user = 'postgres', password = self.pword)
+            self.conn = psycopg2.connect(host = 'localhost', \
+                database = self.dbname, user = 'postgres', \
+                password = self.pword)
             print("Connection successful.")
             self.print_db_version()     
         except (Exception, psycopg2.DatabaseError) as error:
@@ -113,7 +115,8 @@ class FDSDatabase:
             for row in rows:
                 template_bytes = row[0].tobytes()
                 template = byte_str_to_image_array(template_bytes)
-                template_type_array.append(template)
+                template_info = (template_type, template)
+                template_type_array.append(template_info)
                 
             curr.close()
             print(f"Successfully loaded {characteristic} {template_type} array.")
@@ -124,7 +127,8 @@ class FDSDatabase:
     def load_template_dictionary(self):
         for template_type in self.template_types:
             for characteristic in self.template_characteristics:
-                self.template_dictionary[characteristic][template_type] = self.access_all_image_by_type_and_chr(template_type, characteristic)
+                self.template_dictionary[characteristic][template_type] = \
+                    self.access_all_image_by_type_and_chr(template_type, characteristic)
         return self.template_dictionary
 
 # Functions
@@ -204,7 +208,6 @@ def verify_image_path(image_path):
     print("Image verified.")
 
 def byte_str_to_image_array(source_str):
-    print('byteStr_to_image')
     decoded = cv2.imdecode(np.frombuffer(source_str, np.uint8), -1)
     return decoded
 
