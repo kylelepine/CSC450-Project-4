@@ -4,7 +4,7 @@ import pandas as pd
 from timeit import default_timer as timer
 
 # Our moduels
-import GenerateTemplates
+import TemplateModifier
 import DatabaseFunctionality
 import CompareTemplates
 
@@ -31,7 +31,7 @@ def byte_str_to_image_array(source_str):
     return decoded
 
 # displays image from file
-def image_display_test(image_path):
+def image_display_from_path(image_path):
     print('image_display_test()')
     image_bytes = read_img_path_as_byte_str(image_path)
     img = byte_str_to_image_array(image_bytes)
@@ -115,6 +115,7 @@ def display(video_path = None, save_template = False, check_template = True):
                     edge_classification = compare_templates_to_frame(templates['edge'], spliced_foreground_frame)
                     foreground_classification = compare_templates_to_frame(templates['foreground'], spliced_foreground_frame)
                     # comp_end = timer()
+                    
                     if ((edge_classification == 'falling') | (foreground_classification == 'falling')):
                         print("Fall Detected.")
                     # print(f'edge_classification: {edge_classification}')
@@ -180,7 +181,8 @@ def image_compare(templates, frame, starting_point):
     templates_dataset = pd.DataFrame(template_tuple_list, columns = ['class', 'image'])
     # print(templates_dataset)
     # print (frame)
-    classification = CompareTemplates.classify_knn(frame, templates_dataset)
+    k = 4
+    classification = CompareTemplates.classify_knn(frame, templates_dataset, k)
     return classification
 
 # def compare_template_to_frame(template, frame):
@@ -259,10 +261,12 @@ def User_interface():
         elif command == '2':
             display(None, False, False)
         elif command == '3':
-            template_generator = GenerateTemplates.template_generator()
-            template_generator.crop_template()
+            # print(templates)
+            template_modifier = TemplateModifier.template_modifier(templates)
+            template_modifier.crop_template()
         elif command == '4': 
-            comparison_frame = templates['edge']['falling'][0][1]
+            comparison_frame = DatabaseFunctionality.get_image_by_id(11)
+            show_image(comparison_frame)
             start = timer()
             classification = compare_templates_to_frame(templates['edge'], comparison_frame)
             end = timer()
@@ -278,11 +282,7 @@ def User_interface():
 
 def load_templates():
     global templates
-    dbname = 'CSC-450_FDS'
-    pword = 'Apcid28;6jdn'
-    database = DatabaseFunctionality.FDSDatabase(dbname, pword)
-    database.connect()
-    templates = database.load_template_dictionary()
+    templates = DatabaseFunctionality.get_all_images()
 
 def main():
     print('Starting FDSystem')

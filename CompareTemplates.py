@@ -83,8 +83,8 @@ class KNeighborsClassifier:
         distance = np.linalg.norm(source - target)
         return distance
 
-def classify_knn(frame, training_dataset):
-    knn = KNeighborsClassifier(training_dataset)
+def classify_knn(frame, training_dataset, k = None):
+    knn = KNeighborsClassifier(training_dataset, k)
     # print(f"k = {knn.k}")
     # start =  timer()
     classification = knn.classify(frame)

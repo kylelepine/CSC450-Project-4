@@ -32,7 +32,7 @@ class FDSDatabase:
                 database = self.dbname, user = 'postgres', \
                 password = self.pword)
             print("Connection successful.")
-            self.print_db_version()     
+            self.print_db_version()  
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
       
@@ -214,6 +214,19 @@ def byte_str_to_image_array(source_str):
 def quit_application(database):
     print("quit_application() called")
     database.disconnect()
+
+def get_image_by_id(id):
+    db = FDSDatabase(dbname, pword)
+    db.connect()
+    if db.connected():
+        image = db.access_image_by_id(id)
+        return image
+
+def get_all_images():
+    db = FDSDatabase(dbname, pword)
+    db.connect()
+    images = db.load_template_dictionary()
+    return images
 
 def main():
     user_interface()
