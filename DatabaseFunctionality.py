@@ -64,9 +64,9 @@ class FDSDatabase:
             INSERT INTO template (template_type, template_characteristic, image_name, image)
             VALUES(%s, %s, %s, %s)''', (template_type, template_characteristic, image_name, image_byte_array))
             print("Updating template table...")
-            curr.execute('''
-            UPDATE template
-            SET image = %s''', (image_byte_array + b'1',))
+            # curr.execute('''
+            # UPDATE template
+            # SET image = %s''', (image_byte_array + b'1',))
             self.conn.commit()
             curr.close()
             print("Added template successfully.")
@@ -106,14 +106,14 @@ class FDSDatabase:
         try:
             curr = self.conn.cursor()
             curr.execute('''
-            SELECT image
+            SELECT template_id, image
             FROM template
             WHERE (template_type = %s) AND (template_characteristic = %s)
             ''', (template_type, characteristic))
             rows = curr.fetchall()
             template_type_array = []
             for row in rows:
-                template_bytes = row[0].tobytes()
+                template_bytes = row[1].tobytes()
                 template = byte_str_to_image_array(template_bytes)
                 template_info = (template_type, template)
                 template_type_array.append(template_info)

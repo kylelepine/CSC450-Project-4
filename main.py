@@ -38,7 +38,7 @@ def image_display_from_path(image_path):
     print('OpenCV:\n', img)
     show_image(img)
 
-def display(video_path = None, save_template = False, check_template = True):
+def display(video_path = None, save_template = False, check_template = False):
     frame_count = 0
     if save_template:
         print("Saving frames as template")
@@ -111,16 +111,16 @@ def display(video_path = None, save_template = False, check_template = True):
             
             if check_template:
                 if spliced_foreground_frame.shape != frame.shape:
-                    # comp_start = timer()
+                    comp_start = timer()
                     edge_classification = compare_templates_to_frame(templates['edge'], spliced_foreground_frame)
                     foreground_classification = compare_templates_to_frame(templates['foreground'], spliced_foreground_frame)
-                    # comp_end = timer()
+                    comp_end = timer()
                     
-                    if ((edge_classification == 'falling') | (foreground_classification == 'falling')):
-                        print("Fall Detected.")
-                    # print(f'edge_classification: {edge_classification}')
-                    # print(f'foreground_classification: {foreground_classification}')
-                    # print(f"Compared in {comp_end-comp_start} seconds.")
+                    # if ((edge_classification == 'falling') | (foreground_classification == 'falling')):
+                    #     print("Fall Detected.")
+                    print(f'edge_classification: {edge_classification}')
+                    print(f'foreground_classification: {foreground_classification}')
+                    print(f"Compared in {comp_end-comp_start} seconds.")
             
             # Stacking the images to print them together
             # For comparison
@@ -179,50 +179,9 @@ def image_compare(templates, frame, starting_point):
         for entry in templates[template_type]:
             template_tuple_list.append(entry)
     templates_dataset = pd.DataFrame(template_tuple_list, columns = ['class', 'image'])
-    # print(templates_dataset)
-    # print (frame)
     k = 4
     classification = CompareTemplates.classify_knn(frame, templates_dataset, k)
     return classification
-
-# def compare_template_to_frame(template, frame):
-#     highest_similarity = 0.0
-#     # print('compare_template_to_frame()')
-#     # template = cv2.imread(template_path)
-#     # frame = cv2.imread(frame_path)
-#     # template_size = template.shape[0] * template.shape[1]
-#     # frame_size = frame.shape[0] * frame.shape[1]
-#     if template.shape[0] <= frame.shape[0]:
-#         if template.shape[1] <= frame.shape[1]:
-#             row_difference = frame.shape[0] - template.shape[0] 
-#             column_difference = frame.shape[1] - template.shape[1]  
-#             n = 0
-#             print(row_difference)
-#             print(column_difference)
-#             for starting_ypoint in range(0, row_difference + 1 ,template.shape[1]//2):
-#                 for starting_xpoint in range(0, column_difference + 1,template.shape[1]//2):
-#                     n += 1
-#                     temp = image_compare(frame, template, (starting_ypoint, starting_xpoint))
-#                     if temp > highest_similarity:
-#                         highest_similarity = temp
-#             print(f'comparisons: {n}')
-#     return highest_similarity
-    
-# def image_compare(source, comparison, starting_point):
-#     common_pixels = 0
-#     total_pixels_compared = comparison.shape[0] * comparison.shape[1]
-#     similarity_percent = 0.0
-    
-#     for y in range(starting_point[0], starting_point[0] + comparison.shape[0], 1):
-#         for x in range(starting_point[1], starting_point[1]+ comparison.shape[1], 1):
-            
-#             comp_x = x - starting_point[1]
-#             comp_y = y - starting_point[0]
-#             if (source[y][x] == comparison[comp_y][comp_x]).all():
-#                 common_pixels += 1
-            
-#     similarity_percent = common_pixels/total_pixels_compared * 100
-#     return similarity_percent
 
 def User_interface():
     
@@ -231,7 +190,7 @@ def User_interface():
         Command:(button)              Description:
         view_video:(1)                Displays available videos in 'fall_samples' with computer vision.
         view_webcam:(2)               Displays connected webcam with computer vision
-        crop_templates:(3)            Allows user to crop templates that exist in 'templates/layered_frames'.
+        modify templates:(3)          Allows user to modify templates that exist in the database.
         compare_template:(4)          Demonstrates comparing a template to a frame.
         database:(5)                  Access Database UI.
         quit:(q)
@@ -253,19 +212,19 @@ def User_interface():
                     print("Would you like to compare templates to video frame?(y/n):")
                     check_templates = input()
                     check_templates = True if check_templates == 'y' else False
-                    display(available_videos[selection], save_templates, check_templates)
+                    display(video_path = available_videos[selection], save_template = save_templates, check_template = check_templates)
                 else:
                     print("Incorrect selection.")
             except ValueError as error:
                 print(error)
         elif command == '2':
-            display(None, False, False)
+            display()
         elif command == '3':
             # print(templates)
             template_modifier = TemplateModifier.template_modifier(templates)
             template_modifier.crop_template()
         elif command == '4': 
-            comparison_frame = DatabaseFunctionality.get_image_by_id(11)
+            comparison_frame = DatabaseFunctionality.get_image_by_id(12)
             show_image(comparison_frame)
             start = timer()
             classification = compare_templates_to_frame(templates['edge'], comparison_frame)
@@ -283,6 +242,7 @@ def User_interface():
 def load_templates():
     global templates
     templates = DatabaseFunctionality.get_all_images()
+    print(templates.keys())
 
 def main():
     print('Starting FDSystem')
