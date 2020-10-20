@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 cap = cv2.VideoCapture(0 + cv2.CAP_DSHOW)
-     
+
 while(True):
         
     try:#Error Occurs if Nothing is Found
@@ -58,9 +58,9 @@ while(True):
             start = tuple(approx[s][0])
             end = tuple(approx[e][0])
             
-            #Draw Lines Around Largest Exposed Area of Skin
+            #Draw Lines Around the Largest Area of Exposed Skin
             cv2.line(viewRegion, start, end, [255,255,0], 2)
-            
+
         #Show All Windows
         cv2.imshow('mask', mask)
         cv2.imshow('frame', frame)
@@ -71,7 +71,7 @@ while(True):
     k = cv2.waitKey(5) & 0xFF
     if k == 27:
         break
-    
+
 cv2.destroyAllWindows()
 cap.release()    
     
