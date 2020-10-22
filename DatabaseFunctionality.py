@@ -2,8 +2,8 @@ import psycopg2
 import numpy as np
 from cv2 import cv2
 # Database credentials 
-dbname = 'CSC-450_FDS'
-pword = 'Apcid28;6jdn'
+LOCAL_DATABASE_NAME = 'CSC-450_FDS'
+LOCAL_DATABASE_PASSWORD = 'Apcid28;6jdn'
 
 # Database class to handle pgfunctionality
 class FDSDatabase:
@@ -13,9 +13,9 @@ class FDSDatabase:
     template_characteristics = ['edge', 'foreground']
     template_dictionary = {'edge': {}, 'foreground': {}}
 
-    def __init__(self, name, pw):
-        self.dbname = name
-        self.pword = pw
+    def __init__(self, databaseName, databasePassword):
+        self.database_name = databaseName
+        self.database_password = databasePassword
     
     # FDSDatabase methods
     def connected(self):
@@ -29,8 +29,8 @@ class FDSDatabase:
             # Attempts to connect to server
             print("Connecting...")
             self.conn = psycopg2.connect(host = 'localhost', \
-                database = self.dbname, user = 'postgres', \
-                password = self.pword)
+                database = self.database_name, user = 'postgres', \
+                password = self.database_password)
             print("Connection successful.")
             self.print_db_version()  
         except (Exception, psycopg2.DatabaseError) as error:
@@ -54,19 +54,14 @@ class FDSDatabase:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
-    def add_template(self, template_type, template_characteristic, image_name, image_byte_array):
-        #TODO: add functionality to extract image_name from path.
-        #      Maybe find last '/' and have name = what's left.
+    def add_template(self, templateType, templateCharateristic, imageName, imageByteArray):
         try:
             curr = self.conn.cursor()
             print("adding template...")
             curr.execute('''
             INSERT INTO template (template_type, template_characteristic, image_name, image)
-            VALUES(%s, %s, %s, %s)''', (template_type, template_characteristic, image_name, image_byte_array))
+            VALUES(%s, %s, %s, %s)''', (templateType, templateCharateristic, imageName, imageByteArray))
             print("Updating template table...")
-            # curr.execute('''
-            # UPDATE template
-            # SET image = %s''', (image_byte_array + b'1',))
             self.conn.commit()
             curr.close()
             print("Added template successfully.")
@@ -74,52 +69,52 @@ class FDSDatabase:
             print(error)
         curr.close()
         
-    def delete_template(self, template_id):
+    def delete_template(self, templateId):
         try:
             curr = self.conn.cursor()
             curr.execute('''
             DELETE FROM template
             WHERE template_id = %s
-            ''', (template_id))
+            ''', (templateId))
             self.conn.commit()
             curr.close()
             print("Deleted template successfully.")
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
-    def access_image_by_id(self, template_id):
+    def access_image_by_id(self, templateId):
         try:
             curr = self.conn.cursor()
             curr.execute('''
             SELECT image
             FROM template
             WHERE template_id = %s
-            ''', (template_id,))
+            ''', (templateId,))
             template_bytes = curr.fetchone()
-            template = byte_str_to_image_array(template_bytes[0].tobytes())
+            template = byteStringToImage(template_bytes[0].tobytes())
             curr.close()
             return template
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
         
-    def access_all_image_by_type_and_chr(self, template_type, characteristic):
+    def access_all_image_by_type_and_chr(self, templateType, templateCharacteristic):
         try:
             curr = self.conn.cursor()
             curr.execute('''
             SELECT template_id, image
             FROM template
             WHERE (template_type = %s) AND (template_characteristic = %s)
-            ''', (template_type, characteristic))
+            ''', (templateType, templateCharacteristic))
             rows = curr.fetchall()
             template_type_array = []
             for row in rows:
                 template_bytes = row[1].tobytes()
-                template = byte_str_to_image_array(template_bytes)
-                template_info = (template_type, template)
+                template = byteStringToImage(template_bytes)
+                template_info = (templateType, template)
                 template_type_array.append(template_info)
                 
             curr.close()
-            print(f"Successfully loaded {characteristic} {template_type} array.")
+            print(f"Successfully loaded {templateCharacteristic} {templateType} array.")
             return template_type_array
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
@@ -131,12 +126,11 @@ class FDSDatabase:
                     self.access_all_image_by_type_and_chr(template_type, characteristic)
         return self.template_dictionary
 
-# Functions
-def user_interface():
-    db = FDSDatabase(dbname, pword)
+def userInterface():
+    database = FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
     application_running = False
-    db.connect()
-    if db.connected(): 
+    database.connect()
+    if database.connected(): 
         application_running = True
     while application_running:
         print("""
@@ -148,17 +142,16 @@ def user_interface():
 
         user_command = input("Enter a command: ")
         if user_command == "m":
-            manage_database_menu(db)
+            manageDatabaseMenu(database)
         elif user_command == "q":
             application_running = False
         elif user_command == "l":
-            db.load_template_dictionary()
+            database.load_template_dictionary()
         else:
             print("\nINCORRECT COMMAND ENTERED")
-    quit_application(db)
+    quitApplication(database)
 
-def manage_database_menu(database):
-    print("manage_database_menu() called")
+def manageDatabaseMenu(database):
     show_manage_menu = True
     while show_manage_menu:
         print("""
@@ -175,8 +168,8 @@ def manage_database_menu(database):
             image_path = input("Please enter the path of the image: ")
             template_type = input("Please enter the template_type: ")
             template_characteristic = input("Please enter template_characteristic: ")
-            verify_image_path(image_path)
-            image_name_byte_array = read_image_to_byte_array(image_path)
+            verifyImagePath(image_path)
+            image_name_byte_array = imagePathToByteString(image_path)
             image_name = image_name_byte_array[0]
             image_byte_array = image_name_byte_array[1]
             database.add_template(template_type, template_characteristic, image_name, image_byte_array)
@@ -196,40 +189,40 @@ def manage_database_menu(database):
         else:
             print(f"{command} is not a valid command.\nPlease try again.")
 
-def read_image_to_byte_array(image_path):
-    file_path = image_path.split('/')
+def imagePathToByteString(imagePath):
+    file_path = imagePath.split('/')
     filename = file_path[-1]
-    with open(image_path, 'rb') as f:
+    with open(imagePath, 'rb') as f:
         b = bytearray(f.read())
         return (filename,b)
 
-def verify_image_path(image_path):
+def verifyImagePath(imagePath):
     #TODO: add functionality to verify an image.
     print("Image verified.")
 
-def byte_str_to_image_array(source_str):
-    decoded = cv2.imdecode(np.frombuffer(source_str, np.uint8), -1)
+def byteStringToImage(byteString):
+    decoded = cv2.imdecode(np.frombuffer(byteString, np.uint8), -1)
     return decoded
 
-def quit_application(database):
+def quitApplication(database):
     print("quit_application() called")
     database.disconnect()
 
-def get_image_by_id(id):
-    db = FDSDatabase(dbname, pword)
-    db.connect()
-    if db.connected():
-        image = db.access_image_by_id(id)
+def getImageByID(id):
+    database = FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
+    database.connect()
+    if database.connected():
+        image = database.access_image_by_id(id)
         return image
 
-def get_all_images():
-    db = FDSDatabase(dbname, pword)
-    db.connect()
-    images = db.load_template_dictionary()
+def getAllImages():
+    database = FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
+    database.connect()
+    images = database.load_template_dictionary()
     return images
 
 def main():
-    user_interface()
+    userInterface()
 
 if __name__ == '__main__':
     main()

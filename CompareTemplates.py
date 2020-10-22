@@ -10,19 +10,19 @@ from cv2 import cv2
 # all values will be multiplied by -1
 from heapq import heappop, heappush, heapify
 
-class distance_and_class:
+class DistanceAndClass:
     def __init__(self, distance, classification):
         self.distance = distance
         self.classification = classification
     
-    # allows heapq to compare the distance_and_class object to another
+    # allows heapq to compare the DistanceAndClass object to another
     def __lt__(self, other):
         return self.distance < other.distance
 
 # height = 28, width = 28,
 class KNeighborsClassifier:
-    def __init__(self, training_dataset, k = None):
-        self.training_dataset = training_dataset
+    def __init__(self, trainingDataset, k = None):
+        self.training_dataset = trainingDataset
 
         # value for k will be set to the square root of the size of the training dataset unless specified
         if k is not None:
@@ -30,8 +30,8 @@ class KNeighborsClassifier:
         else:
             self.k = 5
 
-    def set_training_dataset(self, training_data):
-        self.training_dataset = training_data
+    def set_training_dataset(self, trainingData):
+        self.training_dataset = trainingData
 
     # allows to reset k 
     def set_k(self, val):
@@ -47,15 +47,14 @@ class KNeighborsClassifier:
             classification = self.training_dataset.iloc[row_index][0]
             training_image = self.training_dataset.iloc[row_index][1]
             sum_euclidean = self.euclidean_distance(image, training_image)
-            DistanceAndClass = distance_and_class(-1 * sum_euclidean, classification)
+            distance_and_class = DistanceAndClass(-1 * sum_euclidean, classification)
             if len(neighbors) < self.k:
-                heappush(neighbors, DistanceAndClass)
+                heappush(neighbors, distance_and_class)
             if neighbors:
                 furthest_neighbor = neighbors[0].distance * -1
-                if (-1 * DistanceAndClass.distance < furthest_neighbor):
+                if (-1 * distance_and_class.distance < furthest_neighbor):
                     heappop(neighbors)
-                    heappush(neighbors, DistanceAndClass)
-        # TODO: Implement weighted voting
+                    heappush(neighbors, distance_and_class)
         classifiers = {}
         for neighbor in neighbors:
             neighbor_class = neighbor.classification
@@ -83,8 +82,8 @@ class KNeighborsClassifier:
         distance = np.linalg.norm(source - target)
         return distance
 
-def classify_knn(frame, training_dataset, k = None):
-    knn = KNeighborsClassifier(training_dataset, k)
+def classifyKnn(frame, trainingDataset, k = None):
+    knn = KNeighborsClassifier(trainingDataset, k)
     # print(f"k = {knn.k}")
     # start =  timer()
     classification = knn.classify(frame)

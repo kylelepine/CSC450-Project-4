@@ -35,7 +35,7 @@ class template_modifier:
     #         # cv2.imshow("current_image", current_image)
 
     def crop_template(self):
-        template_types = ['upright', 'falling', 'sitting', 'lying']
+        # template_types = ['upright', 'falling', 'sitting', 'lying']
         # images = np.array(self.templates[template_characteristic][template_type])
         # images = images[:,1]
 
@@ -43,7 +43,7 @@ class template_modifier:
         # self.current_image = images[current_image_index]
         self.update_image_list(self.template_characteristic, self.template_type)
         original_frame = np.copy(self.current_image)
-        roi = np.array([])
+        # roi = np.array([])
 
         cv2.namedWindow("current_image")
         # cv2.setMouseCallback("current_image", self.click_and_crop)
@@ -156,20 +156,12 @@ class template_modifier:
             
         cv2.destroyAllWindows()
 
-    def update_image_list(self, characteristic, template_type):
-        print(f"Characteristic: {characteristic}\nType: {template_type}")
-        self.template_characteristic = characteristic
-        self.template_type = template_type
+    def update_image_list(self, templateCharacteristic, templateType):
+        print(f"templateCharacteristic: {templateCharacteristic}\nType: {templateType}")
+        self.template_characteristic = templateCharacteristic
+        self.template_type = templateType
 
         self.images = np.array(self.templates[self.template_characteristic][self.template_type], dtype=object)
         self.images = self.images[:,1]
         self.images_length = len(self.images)
         self.current_image = self.images[self.current_image_index]
-        
-# def main():
-#     print('main()')
-#     tm = template_modifier()
-#     tm.crop_template()
-    
-# if __name__ == '__main__':
-#     main()
