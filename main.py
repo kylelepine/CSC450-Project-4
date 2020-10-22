@@ -99,12 +99,14 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
             if checkTemplate:
                 if spliced_foreground_frame.shape != frame.shape:
                     # comp_start = timer()
-                    edge_classification = compareTemplatesToFrame(templates['edge'], spliced_foreground_frame)
+                    edge_classification = compareTemplatesToFrame(templates['edge'], spliced_edge_frame)
                     foreground_classification = compareTemplatesToFrame(templates['foreground'], spliced_foreground_frame)
                     # comp_end = timer()
                     
-                    if ((edge_classification == 'falling') & (foreground_classification == 'falling')):
-                        print("Potential fall detected in frame.")
+                    if edge_classification == 'falling':
+                        print("edge classified as fall.")
+                    if foreground_classification == 'falling':
+                        print("foreground classified as fall.")
                     # print(f'edge_classification: {edge_classification}')
                     # print(f'foreground_classification: {foreground_classification}')
                     # print(f"Compared in {comp_end-comp_start} seconds.")
@@ -240,18 +242,20 @@ def loadLocalTemplates():
             print(template_type)
             path = f"./templates/cropped_templates/{characteristic}/{template_type}/"
             for (_, _, filenames) in walk(path):
-                if filenames is not None:
-                    print(filenames)
-                    images = []
-                    for filename in filenames:
-                        file_path = f"{path}{filename}"
-                        byte_str = imagePathToByteString(file_path)
-                        image = byteStringToImage(byte_str)
-                        image_info = (template_type, image)
-                        images.append(image_info)
-                    local_templates[characteristic][template_type] = images
-                else:
-                    local_templates[characteristic][template_type] = [()]
+                print(filenames)
+                images = []
+                for filename in filenames:
+                    file_path = f"{path}{filename}"
+                    byte_str = imagePathToByteString(file_path)
+                    image = byteStringToImage(byte_str)
+                    image_info = (template_type, image)
+                    images.append(image_info)
+                local_templates[characteristic][template_type] = images
+        
+        # for c in characteristics:
+        #     for t in template_types:
+        #         for entry in local_templates[c][t]:
+        #             print(f"local_templates[{c}][{t}]: {entry}")
     return local_templates
 
 # loads templates from database
@@ -260,7 +264,7 @@ def loadTemplates():
     templates = DatabaseFunctionality.getAllImages()
     if templates is None:
         print("Could not connect to database, loading files locally...")
-        templates = loadLocalTemplates
+        templates = loadLocalTemplates()
 
 def main():
     print('Starting FDSystem')
