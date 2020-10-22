@@ -180,7 +180,7 @@ def userInterface():
         modify templates:(3)          Allows user to modify templates that exist in the database.
         compare_template:(4)          Demonstrates comparing a template to a frame.
         database:(5)                  Access Database UI.
-        load templates from file:(6)  Loads templates from files instead of the database. 
+        load templates from file:(6)  Loads templates from files manually instead of the database. 
         quit:(q)
         """)
         command = input("Command: ")
@@ -258,6 +258,9 @@ def loadLocalTemplates():
 def loadTemplates():
     global templates
     templates = DatabaseFunctionality.getAllImages()
+    if templates is None:
+        print("Could not connect to database, loading files locally...")
+        templates = loadLocalTemplates
 
 def main():
     print('Starting FDSystem')

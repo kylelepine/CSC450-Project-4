@@ -218,8 +218,11 @@ def getImageByID(id):
 def getAllImages():
     database = FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
     database.connect()
-    images = database.load_template_dictionary()
-    return images
+    if database.connected():
+        images = database.load_template_dictionary()
+        return images
+    else:
+        return None
 
 def main():
     userInterface()
