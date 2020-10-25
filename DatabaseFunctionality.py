@@ -110,8 +110,7 @@ class FDSDatabase:
             for row in rows:
                 template_bytes = row[1].tobytes()
                 template = byteStringToImage(template_bytes)
-                template_info = (templateType, template)
-                template_type_array.append(template_info)
+                template_type_array.append(template)
                 
             curr.close()
             print(f"Successfully loaded {templateCharacteristic} {templateType} array.")

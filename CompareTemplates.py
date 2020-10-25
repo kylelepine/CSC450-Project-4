@@ -1,7 +1,5 @@
-import pandas as pd
 import numpy as np
-from cv2 import cv2
-# from timeit import default_timer as timer
+from timeit import default_timer as timer
 
 # Allows the use of a max heap in python.
 # This is the predicted optimal datastrucutre to contain the neighbors calculated Euclidean distance measure as
@@ -38,16 +36,17 @@ class KNeighborsClassifier:
         self.k = val
 
     # K Nearest Neighbors algorithm
-    def classify(self, image):
+    def classify(self, testing_item):
         classification = None
         neighbors = []
         heapify(neighbors)
 
-        for row_index in range(0, len(self.training_dataset)):
-            classification = self.training_dataset.iloc[row_index][0]
-            training_image = self.training_dataset.iloc[row_index][1]
-            sum_euclidean = self.euclidean_distance(image, training_image)
-            distance_and_class = DistanceAndClass(-1 * sum_euclidean, classification)
+        for classification_set in self.training_dataset.items():
+            classification = classification_set[0]
+
+            for training_item in classification_set[1]:
+                sum_euclidean = self.euclidean_distance(testing_item, training_item)
+                distance_and_class = DistanceAndClass(-1 * sum_euclidean, classification)
             if len(neighbors) < self.k:
                 heappush(neighbors, distance_and_class)
             if neighbors:
@@ -88,7 +87,7 @@ def classifyKnn(frame, trainingDataset, k = None):
     # start =  timer()
     classification = knn.classify(frame)
     # end = timer()
-    # print(f"Total time elapsed: {end-start}")
+    # print(f"(KNN) classified in: {end-start}")
     return classification
     
 def main():

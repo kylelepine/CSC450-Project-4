@@ -96,20 +96,39 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
                         spliced_foreground_frame = np.copy(foreground_morph_dilate[y_pos:(y_pos + height), x_pos:(x_pos + width)])
                         cv2.rectangle(contour_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 255, 0), 2)
             
+            edge_template = cv2.resize(spliced_edge_frame, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
+            foreground_template = cv2.resize(spliced_foreground_frame, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
+
             if checkTemplate:
                 if spliced_foreground_frame.shape != frame.shape:
-                    # comp_start = timer()
-                    edge_classification = compareTemplatesToFrame(templates['edge'], spliced_edge_frame)
-                    foreground_classification = compareTemplatesToFrame(templates['foreground'], spliced_foreground_frame)
-                    # comp_end = timer()
+                    k = 3
+
+                    total_comparison_time_start = timer()
+
+                    # edge_comparison_start = timer()
+                    edge_classification = CompareTemplates.classifyKnn(edge_template, templates['edge'], k)
+                    # edge_comparison_end = timer()
                     
-                    if edge_classification == 'falling':
-                        print("edge classified as fall.")
-                    if foreground_classification == 'falling':
-                        print("foreground classified as fall.")
+                    # print(f"Edge compared in {edge_comparison_end - edge_comparison_start} seconds.")
                     # print(f'edge_classification: {edge_classification}')
+
+                    # foreground_comparison_start = timer()
+                    foreground_classification = CompareTemplates.classifyKnn(foreground_template, templates['foreground'], k)
+                    # foreground_comparison_end = timer()
+
+                    # print(f"Foreground compared in {foreground_comparison_end - foreground_comparison_start} seconds.")
                     # print(f'foreground_classification: {foreground_classification}')
-                    # print(f"Compared in {comp_end-comp_start} seconds.")
+                    
+                    total_comparison_time_end = timer()
+                    print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
+
+                    
+                    # if edge_classification == 'falling':
+                    #     print("edge classified as fall.")
+                    # if foreground_classification == 'falling':
+                    #     print("foreground classified as fall.")
+                    
+                    
             
             # Stacking the images to print them together
             # For comparison
@@ -117,26 +136,26 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
             edge_detection_frames = np.hstack((edges_filtered,  cropped_edges))
             foreground_morphs = np.hstack((foreground_morph_close, foreground_morph_open))
             
-            # # Display the resulting frame
-            cv2.imshow('gray_frames', gray_frames)
-            cv2.imshow('edge_detection_frames', edge_detection_frames)
-            cv2.imshow('Foreground Detection', foreground)
-            cv2.imshow('foreground_morphs', foreground_morphs)
-            cv2.imshow('layered_frames', layered_frames)
+            # Display the resulting frame
+            # cv2.imshow('gray_frames', gray_frames)
+            # cv2.imshow('edge_detection_frames', edge_detection_frames)
+            # cv2.imshow('Foreground Detection', foreground)
+            # cv2.imshow('foreground_morphs', foreground_morphs)
+            # cv2.imshow('layered_frames', layered_frames)
             cv2.imshow('contour frame', contour_frame)
-            cv2.imshow('spliced_foreground_frame', spliced_foreground_frame)
-            cv2.imshow('spliced_edge_frame', spliced_edge_frame)
+            cv2.imshow('edge_template', edge_template)
+            cv2.imshow('foreground_template', foreground_template)
 
             if saveTemplate:
                 save_path_frame = f"./templates/layered_frames/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
                 save_path_foreground_template = f"./templates/cropped_templates/foreground/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
-                save_path_edge_template = f"./templates/cropped_templates/edges/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                save_path_edge_template = f"./templates/cropped_templates/edge/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
 
                 # print(save_path)
                 cv2.imwrite(save_path_frame, foreground_morph_dilate)
                 if spliced_foreground_frame.shape != frame.shape:
-                    cv2.imwrite(save_path_foreground_template, spliced_foreground_frame)
-                    cv2.imwrite(save_path_edge_template, spliced_edge_frame)
+                    cv2.imwrite(save_path_foreground_template, foreground_template)
+                    cv2.imwrite(save_path_edge_template, edge_template)
                 frame_count += 1
 
             # controls
@@ -158,10 +177,9 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
 
 def compareTemplatesToFrame(templates, frame):
     classification = None
-    tempalte_dataframe = templateDictionaryToDataframe(templates)
-    k = 5
-    classification = CompareTemplates.classifyKnn(frame, tempalte_dataframe, k)
-    return classification
+    k = 2
+    classification = CompareTemplates.classifyKnn(frame, templates, k)
+    return classification 
 
 def templateDictionaryToDataframe(template_dictionary):
     template_tuple_list = []
@@ -214,9 +232,15 @@ def userInterface():
             template_modifier.crop_template()
         elif command == '4': 
             comparison_frame = DatabaseFunctionality.getImageByID(12)
-            showImage(comparison_frame)
+            # showImage(comparison_frame)
             start = timer()
             classification = compareTemplatesToFrame(templates['edge'], comparison_frame)
+            end = timer()
+            print(f"Compared in {end-start} seconds.")
+            print(f'classification: {classification}')
+
+            start = timer()
+            classification = compareTemplatesToFrame(templates['foreground'], comparison_frame)
             end = timer()
             print(f"Compared in {end-start} seconds.")
             print(f'classification: {classification}')
@@ -237,19 +261,18 @@ def loadLocalTemplates():
     template_types = ["upright", "falling", "sitting", "lying"]
     
     for characteristic in characteristics:
-        print(characteristic)
+        # print(characteristic)
         for template_type in template_types:
-            print(template_type)
+            # print(template_type)
             path = f"./templates/cropped_templates/{characteristic}/{template_type}/"
-            for (_, _, filenames) in walk(path):
-                print(filenames)
+            for (root, dirs, filenames) in walk(path):
+                # print(filenames)
                 images = []
                 for filename in filenames:
                     file_path = f"{path}{filename}"
                     byte_str = imagePathToByteString(file_path)
                     image = byteStringToImage(byte_str)
-                    image_info = (template_type, image)
-                    images.append(image_info)
+                    images.append(image)
                 local_templates[characteristic][template_type] = images
         
         # for c in characteristics:

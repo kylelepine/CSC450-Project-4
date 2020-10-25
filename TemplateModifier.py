@@ -160,8 +160,6 @@ class template_modifier:
         print(f"templateCharacteristic: {templateCharacteristic}\nType: {templateType}")
         self.template_characteristic = templateCharacteristic
         self.template_type = templateType
-
-        self.images = np.array(self.templates[self.template_characteristic][self.template_type], dtype=object)
-        self.images = self.images[:,1]
+        self.images = np.array(self.templates[self.template_characteristic][self.template_type])
         self.images_length = len(self.images)
         self.current_image = self.images[self.current_image_index]
