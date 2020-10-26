@@ -144,10 +144,13 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False, sessi
                     # print(f'foreground_classification: {foreground_classification}')
                     
                     total_comparison_time_end = timer()
-                    print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
+                    # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
                     
-                    # if (edge_classification == 'falling') & (foreground_classification == 'falling'):
-                        # print("fall")
+                    if (edge_classification == 'falling') & (foreground_classification == 'falling'):
+                        print("fall")
+                    elif (edge_classification == 'upright') & (foreground_classification == 'upright'):
+                        print("upright")
+                    
                     # if edge_classification == 'falling':
                     #         print("Potential fall detected.")
                     # if foreground_classification == 'falling':
@@ -241,12 +244,11 @@ def userInterface(database):
             except ValueError as error:
                 print(error)
         elif command == '2':
-            save_templates = input("Save templates?[y]")
-            if save_templates == 'y':
-                session_name = input("Session name: ")
-                display(saveTemplate=True, checkTemplate=False, sessionName= session_name)
-            else:
+            session_name = input("Session Name (leave blank for default session name): ")
+            if session_name == "":
                 display(saveTemplate=False, checkTemplate=False)
+            else:
+                display(saveTemplate=True, checkTemplate=False, sessionName= session_name)
         elif command == '3':
             template_modifier = TemplateModifier.template_modifier(templates)
             template_modifier.crop_template()
