@@ -12,6 +12,10 @@ import CompareTemplates
 
 templates = {}
 
+# Database credentials 
+LOCAL_DATABASE_NAME = 'CSC-450_FDS'
+LOCAL_DATABASE_PASSWORD = 'Apcid28;6jdn'
+
 def imagePathToByteString(path):
     with open(path, 'rb') as f:
         return f.read()
@@ -101,7 +105,7 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
 
             if checkTemplate:
                 if spliced_foreground_frame.shape != frame.shape:
-                    k = 3
+                    k = None
 
                     total_comparison_time_start = timer()
 
@@ -121,12 +125,13 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
                     
                     total_comparison_time_end = timer()
                     print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
-
                     
+                    # if (edge_classification == 'falling') & (foreground_classification == 'falling'):
+                        # print("fall")
                     # if edge_classification == 'falling':
-                    #     print("edge classified as fall.")
+                    #         print("Potential fall detected.")
                     # if foreground_classification == 'falling':
-                    #     print("foreground classified as fall.")
+                    #         print("Potential fall detected.")
                     
                     
             
@@ -175,12 +180,6 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
     # Closes all the frames
     cv2.destroyAllWindows()
 
-def compareTemplatesToFrame(templates, frame):
-    classification = None
-    k = 2
-    classification = CompareTemplates.classifyKnn(frame, templates, k)
-    return classification 
-
 def templateDictionaryToDataframe(template_dictionary):
     template_tuple_list = []
     template_types = ['upright', 'falling', 'sitting', 'lying']
@@ -190,7 +189,7 @@ def templateDictionaryToDataframe(template_dictionary):
     tempalte_dataframe = pd.DataFrame(template_tuple_list, columns = ['class', 'image'])
     return tempalte_dataframe
 
-def userInterface():
+def userInterface(database):
     global templates
     while True:
         print("""
@@ -231,22 +230,23 @@ def userInterface():
             template_modifier = TemplateModifier.template_modifier(templates)
             template_modifier.crop_template()
         elif command == '4': 
-            comparison_frame = DatabaseFunctionality.getImageByID(12)
+            k = None
+            comparison_frame = database.access_image_by_id(12)
             # showImage(comparison_frame)
             start = timer()
-            classification = compareTemplatesToFrame(templates['edge'], comparison_frame)
+            classification = CompareTemplates.classifyKnn(comparison_frame, templates['edge'], k)
             end = timer()
             print(f"Compared in {end-start} seconds.")
             print(f'classification: {classification}')
 
             start = timer()
-            classification = compareTemplatesToFrame(templates['foreground'], comparison_frame)
+            classification = CompareTemplates.classifyKnn(comparison_frame, templates['foreground'], k)
             end = timer()
             print(f"Compared in {end-start} seconds.")
             print(f'classification: {classification}')
         elif command == '5':
-            DatabaseFunctionality.userInterface()
-            loadTemplates()
+            DatabaseFunctionality.userInterface(database)
+            loadTemplates(database)
         elif command == '6':
             templates = loadLocalTemplates()
         elif command == 'q':
@@ -257,42 +257,37 @@ def userInterface():
 def loadLocalTemplates():
     local_templates = {"edge": {}, "foreground": {}}
 
-    characteristics = ["edge", "foreground"]
+    template_characteristics = ["edge", "foreground"]
     template_types = ["upright", "falling", "sitting", "lying"]
     
-    for characteristic in characteristics:
-        # print(characteristic)
+    for template_characteristic in template_characteristics:
         for template_type in template_types:
-            # print(template_type)
-            path = f"./templates/cropped_templates/{characteristic}/{template_type}/"
-            for (root, dirs, filenames) in walk(path):
-                # print(filenames)
+            path = f"./templates/cropped_templates/{template_characteristic}/{template_type}/"
+            for (_, _, filenames) in walk(path):
                 images = []
                 for filename in filenames:
                     file_path = f"{path}{filename}"
                     byte_str = imagePathToByteString(file_path)
                     image = byteStringToImage(byte_str)
                     images.append(image)
-                local_templates[characteristic][template_type] = images
-        
-        # for c in characteristics:
-        #     for t in template_types:
-        #         for entry in local_templates[c][t]:
-        #             print(f"local_templates[{c}][{t}]: {entry}")
+                local_templates[template_characteristic][template_type] = images
     return local_templates
 
 # loads templates from database
-def loadTemplates():
+def loadTemplates(database):
     global templates
-    templates = DatabaseFunctionality.getAllImages()
+
+    templates = database.load_template_dictionary()
     if templates is None:
-        print("Could not connect to database, loading files locally...")
+        print("Loading files locally")
         templates = loadLocalTemplates()
 
 def main():
     print('Starting FDSystem')
-    loadTemplates()
-    userInterface()
+    database = DatabaseFunctionality.FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
+    database.connect()
+    loadTemplates(database)
+    userInterface(database)
 
 if __name__ == '__main__':
     main()

@@ -1,9 +1,7 @@
 import psycopg2
 import numpy as np
 from cv2 import cv2
-# Database credentials 
-LOCAL_DATABASE_NAME = 'CSC-450_FDS'
-LOCAL_DATABASE_PASSWORD = 'Apcid28;6jdn'
+from os import walk
 
 # Database class to handle pgfunctionality
 class FDSDatabase:
@@ -75,7 +73,7 @@ class FDSDatabase:
             curr.execute('''
             DELETE FROM template
             WHERE template_id = %s
-            ''', (templateId))
+            ''', (templateId,))
             self.conn.commit()
             curr.close()
             print("Deleted template successfully.")
@@ -117,6 +115,23 @@ class FDSDatabase:
             return template_type_array
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
+    
+    def list_of_all_IDs(self):
+        try:
+            curr = self.conn.cursor()
+            curr.execute('''
+            SELECT template_id
+            FROM template
+            ''', )
+            rows = curr.fetchall()
+            # print(rows)
+            id_list = []
+            for row in rows:
+                id_list.append(str(row[0]))
+            curr.close()
+            return id_list
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
 
     def load_template_dictionary(self):
         for template_type in self.template_types:
@@ -125,107 +140,76 @@ class FDSDatabase:
                     self.access_all_image_by_type_and_chr(template_type, characteristic)
         return self.template_dictionary
 
-def userInterface():
-    database = FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
-    application_running = False
+def userInterface(database):
     database.connect()
-    if database.connected(): 
-        application_running = True
-    while application_running:
+    show_UI = database.connected()
+    while show_UI:
         print("""
-        Command:                   Description:\n
-        Manage Database(m)         --   Add, Delete, or Access information stored in Database.\n
-        Reload template arrays(l)  --   Loads template_type arrays (This will be automatic in future builds).\n
-        Quit(q)                    --   Terminates program and disconnects from postgreSQL server.
-        """)
-
-        user_command = input("Enter a command: ")
-        if user_command == "m":
-            manageDatabaseMenu(database)
-        elif user_command == "q":
-            application_running = False
-        elif user_command == "l":
-            database.load_template_dictionary()
-        else:
-            print("\nINCORRECT COMMAND ENTERED")
-    quitApplication(database)
-
-def manageDatabaseMenu(database):
-    show_manage_menu = True
-    while show_manage_menu:
-        print("""
-        Command:        Description:\n
-        1         ---   Add template.\n
-        2         ---   Delete template.\n
-        3         ---   Modify template.\n
-        4         ---   Access template image by template_id.\n
-        r         ---   Return to previous menu.
+        Command:                        Description:\n
+        1                               Add template.\n
+        2                               Delete template.\n
+        3                               Access template image by template_id.\n
+        4                               Upload all templates locally.\n
+        5                               Delete all entries.\n
+        Previous Menu(r)                Returns to preivous menu.
         """)
         command = input("Enter a command: ")
         if command == "1":
-            print(f"{command} selected.")
             image_path = input("Please enter the path of the image: ")
             template_type = input("Please enter the template_type: ")
             template_characteristic = input("Please enter template_characteristic: ")
-            verifyImagePath(image_path)
-            image_name_byte_array = imagePathToByteString(image_path)
-            image_name = image_name_byte_array[0]
-            image_byte_array = image_name_byte_array[1]
+            
+            image_byte_array = imagePathToByteArray(image_path)
+
+            image_name = image_path.split('/')
+            image_name = image_name[-1]
+
             database.add_template(template_type, template_characteristic, image_name, image_byte_array)
+
         elif command == "2":
-            print(f"{command} selected.")
-            delete_template_id = input("Enter the template_id you wish to delete: ")
-            database.delete_template(delete_template_id)
+            template_id = input("Enter the template_id you wish to delete: ")
+            database.delete_template(template_id)
+
         elif command == "3":
-            # TODO: Add functionality to modify template
-            print(f"{command} selected.")
-        elif command == "4":
-            print(f"{command} selected.")
             template_id = input("Enter template_id: ")
-            database.access_image_by_id(template_id)
+            image = database.access_image_by_id(template_id)
+            cv2.imread("template", image)
+
+        elif command == "4":
+            uploadAllTemplatesLocally(database)
+        
+        elif command == "5":
+            id_list = database.list_of_all_IDs()
+            for template_id in id_list:
+                database.delete_template(template_id)
+
         elif command == "r":
-            show_manage_menu = False
+            show_UI = False
+
         else:
-            print(f"{command} is not a valid command.\nPlease try again.")
+            print("\nINCORRECT COMMAND ENTERED")
 
-def imagePathToByteString(imagePath):
-    file_path = imagePath.split('/')
-    filename = file_path[-1]
-    with open(imagePath, 'rb') as f:
-        b = bytearray(f.read())
-        return (filename,b)
+def uploadAllTemplatesLocally(database):
+    if database.connected():
+        template_characteristics = ["edge", "foreground"]
+        template_types = ["upright", "falling", "sitting", "lying"]
+        
+        for template_characteristic in template_characteristics:
+            for template_type in template_types:
+                path = f"./templates/cropped_templates/{template_characteristic}/{template_type}/"
+                for (_, _, filenames) in walk(path):
+                    for filename in filenames:
+                        file_path = f"{path}{filename}"
+                        image = imagePathToByteArray(file_path)
+                        database.add_template(template_type, template_characteristic, filename, image)
+    else:
+        print("Could not load files locally.")
 
-def verifyImagePath(imagePath):
-    #TODO: add functionality to verify an image.
-    print("Image verified.")
+def imagePathToByteArray(path):
+    with open(path, 'rb') as f:
+        byte_array = bytearray(f.read())
+        return byte_array
 
 def byteStringToImage(byteString):
     decoded = cv2.imdecode(np.frombuffer(byteString, np.uint8), -1)
     return decoded
-
-def quitApplication(database):
-    print("quit_application() called")
-    database.disconnect()
-
-def getImageByID(id):
-    database = FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
-    database.connect()
-    if database.connected():
-        image = database.access_image_by_id(id)
-        return image
-
-def getAllImages():
-    database = FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
-    database.connect()
-    if database.connected():
-        images = database.load_template_dictionary()
-        return images
-    else:
-        return None
-
-def main():
-    userInterface()
-
-if __name__ == '__main__':
-    main()
-    print("FINISHED")

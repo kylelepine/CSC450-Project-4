@@ -16,13 +16,15 @@ class DistanceAndClass:
     # allows heapq to compare the DistanceAndClass object to another
     def __lt__(self, other):
         return self.distance < other.distance
+    
+    def __str__(self):
+        return (f"{self.distance},{self.classification}")
 
 # height = 28, width = 28,
 class KNeighborsClassifier:
     def __init__(self, trainingDataset, k = None):
         self.training_dataset = trainingDataset
 
-        # value for k will be set to the square root of the size of the training dataset unless specified
         if k is not None:
             self.k = k
         else:
@@ -43,21 +45,23 @@ class KNeighborsClassifier:
 
         for classification_set in self.training_dataset.items():
             classification = classification_set[0]
-
             for training_item in classification_set[1]:
                 sum_euclidean = self.euclidean_distance(testing_item, training_item)
                 distance_and_class = DistanceAndClass(-1 * sum_euclidean, classification)
-            if len(neighbors) < self.k:
-                heappush(neighbors, distance_and_class)
-            if neighbors:
-                furthest_neighbor = neighbors[0].distance * -1
-                if (-1 * distance_and_class.distance < furthest_neighbor):
+                if len(neighbors) < self.k:
+                    heappush(neighbors, distance_and_class)
+                elif (-1 * distance_and_class.distance < neighbors[0].distance * -1):
                     heappop(neighbors)
                     heappush(neighbors, distance_and_class)
+
         classifiers = {}
         for neighbor in neighbors:
             neighbor_class = neighbor.classification
-            weighted_vote = 1.0 / neighbor.distance * -1
+            try:
+                weighted_vote = 1.0 / neighbor.distance * -1
+            except(ZeroDivisionError) as error:
+                print(error)
+                weighted_vote = 1.0
             if neighbor_class in classifiers:
                 classifiers[neighbor_class] += weighted_vote
             else:
@@ -68,15 +72,15 @@ class KNeighborsClassifier:
 
     def euclidean_distance(self, source, target):
         
-        if target.shape[0] < source.shape[0]:
-            target = np.vstack((target, np.zeros([source.shape[0] - target.shape[0], target.shape[1]])))
-        elif source.shape[0] < target.shape[0]:
-            source = np.vstack((source, np.zeros([target.shape[0] - source.shape[0], source.shape[1]])))
+        # if target.shape[0] < source.shape[0]:
+        #     target = np.vstack((target, np.zeros([source.shape[0] - target.shape[0], target.shape[1]])))
+        # elif source.shape[0] < target.shape[0]:
+        #     source = np.vstack((source, np.zeros([target.shape[0] - source.shape[0], source.shape[1]])))
 
-        if target.shape[1] < source.shape[1]:
-            target = np.hstack((target, np.zeros([target.shape[0], source.shape[1] - target.shape[1]])))
-        elif source.shape[1] < target.shape[1]:
-            source = np.hstack((source, np.zeros([source.shape[0], target.shape[1] - source.shape[1]])))
+        # if target.shape[1] < source.shape[1]:
+        #     target = np.hstack((target, np.zeros([target.shape[0], source.shape[1] - target.shape[1]])))
+        # elif source.shape[1] < target.shape[1]:
+        #     source = np.hstack((source, np.zeros([source.shape[0], target.shape[1] - source.shape[1]])))
         
         distance = np.linalg.norm(source - target)
         return distance
@@ -84,14 +88,9 @@ class KNeighborsClassifier:
 def classifyKnn(frame, trainingDataset, k = None):
     knn = KNeighborsClassifier(trainingDataset, k)
     # print(f"k = {knn.k}")
+    # print(trainingDataset)
     # start =  timer()
     classification = knn.classify(frame)
     # end = timer()
     # print(f"(KNN) classified in: {end-start}")
     return classification
-    
-def main():
-    pass
-
-if __name__ == '__main__':
-    main()
