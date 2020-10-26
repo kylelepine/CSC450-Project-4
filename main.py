@@ -1,8 +1,11 @@
+from imutils.object_detection import non_max_suppression
+from imutils import paths
 import numpy as np
 from cv2 import cv2
 import pandas as pd
 from timeit import default_timer as timer
 from os import walk
+import imutils
 
 # Modules for our system
 import TemplateModifier
@@ -10,7 +13,9 @@ import DatabaseFunctionality
 import CompareTemplates
 
 
-templates = {}
+fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
+
+templates = None
 
 # Database credentials 
 LOCAL_DATABASE_NAME = 'CSC-450_FDS'
@@ -45,11 +50,20 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
     if (cap.isOpened()== False): 
         print("Error opening video stream or file")
 
-    fgbg = cv2.createBackgroundSubtractorMOG2(
-        history=10,
-        varThreshold=2,
-        detectShadows=False)
-    print("Click '1' to start saving templates. They will be autmatically cropped to the contour detection bounding box.")
+
+    # Smooth out to get the moving area
+    kernel_close = np.ones((10,10),np.uint8)
+    kernel_open = np.ones((10,10),np.uint8)
+    kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
+
+    # An aggressive kernel used to make a strong contour
+    bounding_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
+
+    print("""
+    Button      Command
+    1           Toggles saving 
+    2           Toggles classification 
+    """)
     # Read the video
     while(cap.isOpened()):
         # Capture frame-by-frame
@@ -60,46 +74,52 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
             # Smoothing without removing edges.
             gray_filtered = cv2.bilateralFilter(gray, 7, 75, 75)
             # Extract the foreground
-            foreground = fgbg.apply(gray_filtered) 
-            # Smooth out to get the moving area
-            kernel_close = np.ones((10,10),np.uint8)
-            kernel_open = np.ones((10,10),np.uint8)
-            kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
+            foreground = fgbg.apply(gray_filtered, learningRate = 0.02)
 
-            foreground_morph_close = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)
-            foreground_morph_open = cv2.morphologyEx(foreground_morph_close, cv2.MORPH_OPEN, kernel_open)
-            foreground_morph_close = cv2.morphologyEx(foreground_morph_open, cv2.MORPH_CLOSE, kernel_close)
-            foreground_morph_dilate = cv2.dilate(foreground_morph_close,kernel_dilate,iterations = 1)
+            foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, bounding_kernel)
+            bounding_ret, bounding_thresh = cv2.threshold(foreground,91,255,cv2.THRESH_BINARY)
 
-            edges_filtered = cv2.Canny(gray_filtered, 60, 120)
+            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)            
+            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, kernel_open)   
+            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close) 
+            # foreground = cv2.dilate(foreground,kernel_dilate,iterations = 1)     
+
+            # Performs Canny edge detection on filtered frame.
+            edges_filtered = cv2.Canny(gray_filtered, 60, 120)   
             # Crop off the edges out of the moving area
-            cropped_edges = (foreground_morph_dilate // 255) * edges_filtered
-
-            layered_frames = np.add(cropped_edges, foreground_morph_dilate)
+            cropped_edges = (foreground // 255) * edges_filtered 
 
             # image splice by contour detection for foreground
-            _, thresh_fg = cv2.threshold(layered_frames, 91, 255, cv2.THRESH_BINARY)
-            contours_foreground = cv2.findContours(thresh_fg, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2]
-            contour_frame = frame.copy()
-            spliced_foreground_frame = contour_frame.copy()
-            spliced_edge_frame = contour_frame.copy()
-            if len(contours_foreground) != 0:
-                contour = max(contours_foreground, key = cv2.contourArea)
+            contours = cv2.findContours(bounding_thresh, cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)[-2] 
+
+            detection_frame = frame.copy()
+            spliced_foreground_frame = frame.copy()
+            spliced_edge_frame = frame.copy()
+
+            if len(contours) != 0:
+                contour = max(contours, key = cv2.contourArea)
                 x_pos, y_pos, width, height = cv2.boundingRect(contour)
-                buffer_space = 40
-                box_area = (width * x_pos) * (height * y_pos)
-                min_area = 10000
+                bounding_rect = np.array([[x_pos, y_pos, x_pos + width, y_pos + height]])
+                optimal_pick = non_max_suppression(bounding_rect, probs=None, overlapThresh=0.65)
+
+                box_area = width * height
+                min_area = 500
+                #display the bounding box if the minimum area is met (this is done to prevent noise
+                #this should probably be moved to be beside the len != 0 contour to avoid wasting processing on noise
                 if (abs(box_area) > min_area):
-                    if(width - x_pos + buffer_space > height - y_pos):
-                        spliced_edge_frame = np.copy(cropped_edges[y_pos:(y_pos + height), x_pos:(x_pos + width)])
-                        spliced_foreground_frame = np.copy(foreground_morph_dilate[y_pos:(y_pos + height), x_pos:(x_pos + width)])
-                        cv2.rectangle(contour_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 0, 255), 2)
+                    buffer_space = 40   # how much wider should the box be to detect a logic fall
+                    
+                    if(width + buffer_space > height): 
+                        spliced_edge_frame          = np.copy(edges_filtered[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        spliced_foreground_frame    = np.copy(foreground[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        cv2.rectangle(detection_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 0, 255), 2)
                         
                     else:
-                        spliced_edge_frame = np.copy(cropped_edges[y_pos:(y_pos + height), x_pos:(x_pos + width)])
-                        spliced_foreground_frame = np.copy(foreground_morph_dilate[y_pos:(y_pos + height), x_pos:(x_pos + width)])
-                        cv2.rectangle(contour_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 255, 0), 2)
-            
+                        spliced_edge_frame          = np.copy(edges_filtered[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        spliced_foreground_frame    = np.copy(foreground[y_pos:(y_pos + height), x_pos:(x_pos + width)])
+                        cv2.rectangle(detection_frame, (x_pos, y_pos), (x_pos + width, y_pos + height), (0, 255, 0), 2)
+
+
             edge_template = cv2.resize(spliced_edge_frame, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
             foreground_template = cv2.resize(spliced_foreground_frame, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
 
@@ -133,31 +153,23 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
                     # if foreground_classification == 'falling':
                     #         print("Potential fall detected.")
                     
-                    
-            
-            # Stacking the images to print them together
-            # For comparison
-            gray_frames = np.hstack(( gray,  gray_filtered))
+            # Stacking the images to print them together for comparison
+            gray_frames = np.hstack((gray,  gray_filtered))
             edge_detection_frames = np.hstack((edges_filtered,  cropped_edges))
-            foreground_morphs = np.hstack((foreground_morph_close, foreground_morph_open))
             
             # Display the resulting frame
-            # cv2.imshow('gray_frames', gray_frames)
-            # cv2.imshow('edge_detection_frames', edge_detection_frames)
-            # cv2.imshow('Foreground Detection', foreground)
-            # cv2.imshow('foreground_morphs', foreground_morphs)
-            # cv2.imshow('layered_frames', layered_frames)
-            cv2.imshow('contour frame', contour_frame)
+            cv2.imshow('gray_frames', gray_frames)
+            cv2.imshow('edge_detection_frames', edge_detection_frames)
+            cv2.imshow('Foreground Detection', foreground)
+            # cv2.imshow('bounding mask frame', bounding_mask)
+            cv2.imshow('detection_frame', detection_frame)
             cv2.imshow('edge_template', edge_template)
             cv2.imshow('foreground_template', foreground_template)
 
             if saveTemplate:
-                save_path_frame = f"./templates/layered_frames/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
                 save_path_foreground_template = f"./templates/cropped_templates/foreground/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
                 save_path_edge_template = f"./templates/cropped_templates/edge/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
 
-                # print(save_path)
-                cv2.imwrite(save_path_frame, foreground_morph_dilate)
                 if spliced_foreground_frame.shape != frame.shape:
                     cv2.imwrite(save_path_foreground_template, foreground_template)
                     cv2.imwrite(save_path_edge_template, edge_template)
@@ -172,6 +184,10 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
             elif key == ord('1'):
                 saveTemplate = not saveTemplate
                 print(f'saveTemplate: {saveTemplate}')
+            # clasify frame with templates
+            elif key == ord('2'):
+                checkTemplate = not checkTemplate
+                print(f'checkTemplate: {checkTemplate}')
         # Break the loop
         else: 
             break
@@ -225,7 +241,7 @@ def userInterface(database):
             except ValueError as error:
                 print(error)
         elif command == '2':
-            display()
+            display(saveTemplate=False, checkTemplate=False)
         elif command == '3':
             template_modifier = TemplateModifier.template_modifier(templates)
             template_modifier.crop_template()
@@ -276,9 +292,9 @@ def loadLocalTemplates():
 # loads templates from database
 def loadTemplates(database):
     global templates
-
-    templates = database.load_template_dictionary()
-    if templates is None:
+    if database.connected():
+        templates = database.load_template_dictionary()
+    else:
         print("Loading files locally")
         templates = loadLocalTemplates()
 
