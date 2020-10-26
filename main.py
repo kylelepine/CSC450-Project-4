@@ -36,7 +36,7 @@ def showImage(source):
             break
     return cv2.destroyAllWindows()
 
-def display(videoPath = None, saveTemplate = False, checkTemplate = False):
+def display(videoPath = None, saveTemplate = False, checkTemplate = False, sessionName = None):
     frame_count = 0
     if saveTemplate:
         print("Saving frames as template")
@@ -167,8 +167,8 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False):
             cv2.imshow('foreground_template', foreground_template)
 
             if saveTemplate:
-                save_path_foreground_template = f"./templates/cropped_templates/foreground/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
-                save_path_edge_template = f"./templates/cropped_templates/edge/{'webcam' if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                save_path_foreground_template = f"./templates/cropped_templates/foreground/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                save_path_edge_template = f"./templates/cropped_templates/edge/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
 
                 if spliced_foreground_frame.shape != frame.shape:
                     cv2.imwrite(save_path_foreground_template, foreground_template)
@@ -241,7 +241,12 @@ def userInterface(database):
             except ValueError as error:
                 print(error)
         elif command == '2':
-            display(saveTemplate=False, checkTemplate=False)
+            save_templates = input("Save templates?[y]")
+            if save_templates == 'y':
+                session_name = input("Session name: ")
+                display(saveTemplate=True, checkTemplate=False, sessionName= session_name)
+            else:
+                display(saveTemplate=False, checkTemplate=False)
         elif command == '3':
             template_modifier = TemplateModifier.template_modifier(templates)
             template_modifier.crop_template()
