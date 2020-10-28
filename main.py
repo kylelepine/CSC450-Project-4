@@ -10,7 +10,7 @@ import imutils
 # Modules for our system
 import TemplateModifier
 import DatabaseFunctionality
-import CompareTemplates
+import FrameClassification
 
 
 fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
@@ -130,14 +130,14 @@ def display(videoPath = None, saveTemplate = False, checkTemplate = False, sessi
                     total_comparison_time_start = timer()
 
                     # edge_comparison_start = timer()
-                    edge_classification = CompareTemplates.classifyKnn(edge_template, templates['edge'], k)
+                    edge_classification = FrameClassification.classifyKnn(edge_template, templates['edge'], k)
                     # edge_comparison_end = timer()
                     
                     # print(f"Edge compared in {edge_comparison_end - edge_comparison_start} seconds.")
                     # print(f'edge_classification: {edge_classification}')
 
                     # foreground_comparison_start = timer()
-                    foreground_classification = CompareTemplates.classifyKnn(foreground_template, templates['foreground'], k)
+                    foreground_classification = FrameClassification.classifyKnn(foreground_template, templates['foreground'], k)
                     # foreground_comparison_end = timer()
 
                     # print(f"Foreground compared in {foreground_comparison_end - foreground_comparison_start} seconds.")
@@ -250,20 +250,20 @@ def userInterface(database):
             else:
                 display(saveTemplate=True, checkTemplate=False, sessionName= session_name)
         elif command == '3':
-            template_modifier = TemplateModifier.template_modifier(templates)
+            template_modifier = TemplateModifier.TemplateModifier(templates)
             template_modifier.crop_template()
         elif command == '4': 
             k = None
             comparison_frame = database.access_image_by_id(12)
             # showImage(comparison_frame)
             start = timer()
-            classification = CompareTemplates.classifyKnn(comparison_frame, templates['edge'], k)
+            classification = FrameClassification.classifyKnn(comparison_frame, templates['edge'], k)
             end = timer()
             print(f"Compared in {end-start} seconds.")
             print(f'classification: {classification}')
 
             start = timer()
-            classification = CompareTemplates.classifyKnn(comparison_frame, templates['foreground'], k)
+            classification = FrameClassification.classifyKnn(comparison_frame, templates['foreground'], k)
             end = timer()
             print(f"Compared in {end-start} seconds.")
             print(f'classification: {classification}')
@@ -307,7 +307,7 @@ def loadTemplates(database):
 
 def main():
     print('Starting FDSystem')
-    database = DatabaseFunctionality.FDSDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
+    database = DatabaseFunctionality.TemplateDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
     database.connect()
     loadTemplates(database)
     userInterface(database)

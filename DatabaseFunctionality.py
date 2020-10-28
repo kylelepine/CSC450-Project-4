@@ -4,7 +4,7 @@ from cv2 import cv2
 from os import walk
 
 # Database class to handle pgfunctionality
-class FDSDatabase:
+class TemplateDatabase:
     conn = None
     
     template_types = ['upright', 'falling', 'sitting', 'lying']
@@ -15,7 +15,7 @@ class FDSDatabase:
         self.database_name = databaseName
         self.database_password = databasePassword
     
-    # FDSDatabase methods
+    # TemplateDatabase methods
     def connected(self):
         if self.conn is not None:
             return True
