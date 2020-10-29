@@ -20,7 +20,6 @@ class DistanceAndClass:
     def __str__(self):
         return (f"{self.distance},{self.classification}")
 
-# height = 28, width = 28,
 class KNeighborsClassifier:
     def __init__(self, trainingDataset, k = None):
         self.training_dataset = trainingDataset
@@ -33,7 +32,6 @@ class KNeighborsClassifier:
     def set_training_dataset(self, trainingData):
         self.training_dataset = trainingData
 
-    # allows to reset k 
     def set_k(self, val):
         self.k = val
 
@@ -72,25 +70,6 @@ class KNeighborsClassifier:
 
     def euclidean_distance(self, source, target):
         
-        # if target.shape[0] < source.shape[0]:
-        #     target = np.vstack((target, np.zeros([source.shape[0] - target.shape[0], target.shape[1]])))
-        # elif source.shape[0] < target.shape[0]:
-        #     source = np.vstack((source, np.zeros([target.shape[0] - source.shape[0], source.shape[1]])))
-
-        # if target.shape[1] < source.shape[1]:
-        #     target = np.hstack((target, np.zeros([target.shape[0], source.shape[1] - target.shape[1]])))
-        # elif source.shape[1] < target.shape[1]:
-        #     source = np.hstack((source, np.zeros([source.shape[0], target.shape[1] - source.shape[1]])))
-        
         distance = np.linalg.norm(source - target)
+        
         return distance
-
-def classifyKnn(frame, trainingDataset, k = None):
-    knn = KNeighborsClassifier(trainingDataset, k)
-    # print(f"k = {knn.k}")
-    # print(trainingDataset)
-    # start =  timer()
-    classification = knn.classify(frame)
-    # end = timer()
-    # print(f"(KNN) classified in: {end-start}")
-    return classification

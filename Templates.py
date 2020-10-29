@@ -3,6 +3,8 @@ import numpy as np
 from cv2 import cv2
 from os import walk
 
+import ComputerVision
+
 # Database class to handle pgfunctionality
 class TemplateDatabase:
     conn = None
@@ -89,13 +91,13 @@ class TemplateDatabase:
             WHERE template_id = %s
             ''', (templateId,))
             template_bytes = curr.fetchone()
-            template = byteStringToImage(template_bytes[0].tobytes())
+            template = ComputerVision.byteStringToImage(template_bytes[0].tobytes())
             curr.close()
             return template
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
         
-    def access_all_image_by_type_and_chr(self, templateType, templateCharacteristic):
+    def access_images(self, templateType, templateCharacteristic):
         try:
             curr = self.conn.cursor()
             curr.execute('''
@@ -107,7 +109,7 @@ class TemplateDatabase:
             template_type_array = []
             for row in rows:
                 template_bytes = row[1].tobytes()
-                template = byteStringToImage(template_bytes)
+                template = ComputerVision.byteStringToImage(template_bytes)
                 template_type_array.append(template)
                 
             curr.close()
@@ -133,83 +135,42 @@ class TemplateDatabase:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
-    def load_template_dictionary(self):
-        for template_type in self.template_types:
-            for characteristic in self.template_characteristics:
-                self.template_dictionary[characteristic][template_type] = \
-                    self.access_all_image_by_type_and_chr(template_type, characteristic)
-        return self.template_dictionary
+    def load_templates(self, templates):
+        for template_characteristic in templates.keys():
+            for template_type in templates[template_characteristic].keys():
 
-def userInterface(database):
-    database.connect()
-    show_UI = database.connected()
-    while show_UI:
-        print("""
-        Command:                        Description:\n
-        1                               Add template.\n
-        2                               Delete template.\n
-        3                               Access template image by template_id.\n
-        4                               Upload all templates locally.\n
-        5                               Delete all entries.\n
-        Previous Menu(r)                Returns to preivous menu.
-        """)
-        command = input("Enter a command: ")
-        if command == "1":
-            image_path = input("Please enter the path of the image: ")
-            template_type = input("Please enter the template_type: ")
-            template_characteristic = input("Please enter template_characteristic: ")
-            
-            image_byte_array = imagePathToByteArray(image_path)
+                templates[template_characteristic][template_type] = \
+                    self.access_images(templateType=template_type, templateCharacteristic=template_characteristic)
+                    
+        return templates
 
-            image_name = image_path.split('/')
-            image_name = image_name[-1]
-
-            database.add_template(template_type, template_characteristic, image_name, image_byte_array)
-
-        elif command == "2":
-            template_id = input("Enter the template_id you wish to delete: ")
-            database.delete_template(template_id)
-
-        elif command == "3":
-            template_id = input("Enter template_id: ")
-            image = database.access_image_by_id(template_id)
-            cv2.imread("template", image)
-
-        elif command == "4":
-            uploadAllTemplatesLocally(database)
-        
-        elif command == "5":
-            id_list = database.list_of_all_IDs()
-            for template_id in id_list:
-                database.delete_template(template_id)
-
-        elif command == "r":
-            show_UI = False
-
-        else:
-            print("\nINCORRECT COMMAND ENTERED")
-
-def uploadAllTemplatesLocally(database):
-    if database.connected():
-        template_characteristics = ["edge", "foreground"]
-        template_types = ["upright", "falling", "sitting", "lying"]
-        
-        for template_characteristic in template_characteristics:
-            for template_type in template_types:
+    def upload_all_local_templates(self, database):
+        for template_characteristic in self.template_characteristics:
+            for template_type in self.template_types:
                 path = f"./templates/cropped_templates/{template_characteristic}/{template_type}/"
                 for (_, _, filenames) in walk(path):
                     for filename in filenames:
                         file_path = f"{path}{filename}"
-                        image = imagePathToByteArray(file_path)
+                        image = ComputerVision.imagePathToByteArray(file_path)
                         database.add_template(template_type, template_characteristic, filename, image)
-    else:
-        print("Could not load files locally.")
 
-def imagePathToByteArray(path):
-    with open(path, 'rb') as f:
-        byte_array = bytearray(f.read())
-        return byte_array
+# loads templates from files saved on local machine. (NOTE: Folders must be premade and organized to use)
+def loadTemplatesLocally():
+    local_templates = {"edge": {}, "foreground": {}}
 
-def byteStringToImage(byteString):
-    decoded = cv2.imdecode(np.frombuffer(byteString, np.uint8), -1)
-    return decoded
+    template_characteristics = ["edge", "foreground"]
+    template_types = ["upright", "falling", "sitting", "lying"]
+    
+    for template_characteristic in template_characteristics:
+        for template_type in template_types:
+            path = f"./templates/cropped_templates/{template_characteristic}/{template_type}/"
+            for (_, _, filenames) in walk(path):
+                images = []
+                for filename in filenames:
+                    file_path = f"{path}{filename}"
+                    byte_str = ComputerVision.imagePathToByteString(file_path)
+                    image = ComputerVision.byteStringToImage(byte_str)
+                    images.append(image)
+                local_templates[template_characteristic][template_type] = images
+
+    return local_templates
