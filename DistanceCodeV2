@@ -4,8 +4,6 @@ import numpy as np
 from cv2 import cv2
 import imutils
 
-# Logan Koch did a lot of this work, I am only building off of it.
-
 # Capture Video Camera
 cap = cv2.VideoCapture(cv2.CAP_DSHOW)
 
@@ -20,6 +18,8 @@ fifteenFileCount = 0
 twentyFileCount = 0
 twentyfiveFileCount = 0
 startupBuffer = 0
+frameCounter = 0
+kernelSize = 15
 
 #Set Starting Distance of Subject to 0
 distance = 0
@@ -31,37 +31,45 @@ folder = ""
 def distanceCalculation(frame, w, x, y):
     font = cv2.FONT_HERSHEY_COMPLEX
     fall = False
+    global kernelSize
 
     #Find Distance by Subject's Width Relative to Camera
     if(w >= 250):
         distance = 0
         folder = "FALL"
-        fall = True
-        cv2.putText(frame, "FALLEN", (x,y), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
+        #fall = True
+        kernelSize = 30
+        cv2.putText(frame, "Too Close", (x,y), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
     if(w < 250 and w >= 120):
         distance = 5
         folder = "FIVE"
         fall = False
+        kernelSize = 25
         cv2.putText(frame, "0-5 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 120 and w >= 100):
         distance = 10
         folder = "TEN"
         fall = False
+        kernelSize = 20
+        print(kernelSize)
         cv2.putText(frame, "5-10 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 100 and w >= 60):
         distance = 15
         folder = "FIFTEEN"
         fall = False
+        kernelSize = 15
         cv2.putText(frame, "10-15 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 60 and w >= 40):
         distance = 20
         folder = "TWENTY"
         fall = False
+        kernelSize = 10
         cv2.putText(frame, "15-20 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 40 and w >= 20):
         distance = 25
         folder = "TWENTYFIVE"
         fall = False
+        kernelSize = 1
         cv2.putText(frame, "20-25 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 20):
         distance = 30
@@ -71,39 +79,34 @@ def distanceCalculation(frame, w, x, y):
     if(fall == True):
         print("Fall Detected!")
 
-
-#Runs Until Program is Manually Ended.
+# Runs Until Program is Manually Ended.
 while(1):
-    #Capturing the Frame and Boolean 
+    
+    # Capturing the Frame and Boolean 
     ret, frame = cap.read()
-    #fgmask = fgbg.apply(frame, learningRate = 0.005)
     fgmask = fgbg.apply(frame, learningRate = 0.04)
     
-    #gs_kernel_close = np.ones((30,30),np.uint8)
-    gs_kernel_open = np.ones((1,1),np.uint8)
-
-    kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
+    gs_kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(1, 1))
+    gs_kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(50, 50))
   
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, gs_kernel_open)
-    testmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel1)
+    testmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, gs_kernel_close)
     
-    #Applying Gaussian Blur to fgbg Mask Frame
+    # Applying Gaussian Blur to fgbg Mask Frame
     blur = cv2.GaussianBlur(fgmask,(5,5),0)
 
-    #Converting Frame with Threshhold (https://docs.opencv.org/master/d7/d4d/tutorial_py_thresholding.html)
-    #ret, thresh = cv2.threshold(fgmask,91,255,cv2.THRESH_BINARY)
+    # Converting Frame with Threshhold (https://docs.opencv.org/master/d7/d4d/tutorial_py_thresholding.html)
     ret, thresh = cv2.threshold(testmask, 91, 255, cv2.THRESH_BINARY)
     contours =  cv2.findContours(thresh, cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)[-2] 
 
     #Buffer Startup
     startupBuffer += 1   
-
-    if (startupBuffer > 10):
+    frameCounter += 1
+    if (startupBuffer > 100 and frameCounter % 2 == 0):
 
         #Find Contours
         if len(contours) != 0:
             c = max(contours, key = cv2.contourArea)
-            #cv2.drawContours(frame, [c], -1, (0,255,0), thickness =- 1)
             x, y, w, h = cv2.boundingRect(c)
 
 
@@ -129,7 +132,6 @@ while(1):
 
             
             rects = np.array([[x, y, x + w, y + h]])
-
             pick = non_max_suppression(rects, probs=None, overlapThresh=0.65)
 
 
@@ -139,33 +141,49 @@ while(1):
             ##################################### End New Code #########################################
             
             boxArea = w * h
-
-            minArea = 500
+            minArea = 10000
             if(boxArea > minArea):
-                #print(boxArea)
-
                 #Invoke Distance Calculation
+                print("BEfore distance")
+                print(kernelSize)
                 distanceCalculation(frame, w, x, y)
-
+                print("After distance")
+                
+                print(kernelSize)
                 #Create Template Based on Distance
-                #if (boxArea > minArea):
+                # if(distance == 0):
+                #     crop_frame = fgmask[y:(y+h), x:(x+w)]
+                # if(distance == 5):
+                #     crop_frame = fgmask[y:(y+h), x:(x+250)]
+                # if(distance == 10):
+                #     crop_frame = fgmask[y:(y+h), x:(x+120)]
+                # if(distance == 15):
+                #     crop_frame = fgmask[y:(y+h), x:(x+100)]
+                # if(distance == 20):
+                #     crop_frame = fgmask[y:(y+h), x:(x+60)]
+                # if(distance == 25):
+                #     crop_frame = fgmask[y:(y+h), x:(x+40)]   
+                # if(distance == 30):
+                #     crop_frame = fgmask[y:(y+h), x:(x+20)]
                 if(distance == 0):
-                    crop_frame = fgmask[y:(y+h), x:(x+w)]
+                    crop_frame = testmask[y:(y+h), x:(x+w)]
                 if(distance == 5):
-                    crop_frame = fgmask[y:(y+h), x:(x+250)]
+                    crop_frame = testmask[y:(y+h), x:(x+250)]
                 if(distance == 10):
-                    crop_frame = fgmask[y:(y+h), x:(x+120)]
+                    crop_frame = testmask[y:(y+h), x:(x+120)]
                 if(distance == 15):
-                    crop_frame = fgmask[y:(y+h), x:(x+100)]
+                    crop_frame = testmask[y:(y+h), x:(x+100)]
                 if(distance == 20):
-                    crop_frame = fgmask[y:(y+h), x:(x+60)]
+                    crop_frame = testmask[y:(y+h), x:(x+60)]
                 if(distance == 25):
-                    crop_frame = fgmask[y:(y+h), x:(x+40)]   
+                    crop_frame = testmask[y:(y+h), x:(x+40)]   
                 if(distance == 30):
-                    crop_frame = fgmask[y:(y+h), x:(x+20)]
+                    crop_frame = testmask[y:(y+h), x:(x+20)]
                 
                 #Create Kernel Sizes
-                kernel_close = np.ones((15,15),np.uint8)
+                #kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(kernelSize, kernelSize))
+                kernel_close = np.ones((kernelSize, kernelSize), np.uint8)
+                # print(kernelSize)
                 kernel_open = np.ones((1,1),np.uint8)
 
                 #Set Foreground Morph
@@ -195,17 +213,17 @@ while(1):
                 cv2.imshow('morphology', foreground_morph)
             
                 # #Draw Bounding Boxes
-                # #if(abs(boxArea) > minArea):            
-                # if(w-x + 40 > h-y):  
-                #     #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,255),2)
-                #     for (xA, yA, xB, yB) in pick:
-                #         # display the detected boxes in the colour picture
-                #         cv2.rectangle(frame, (xA, yA), (xB, yB), (0,0,255), 2)
-                # else:
-                #     #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
-                #     for (xA, yA, xB, yB) in pick:
-                #     # display the detected boxes in the colour picture
-                #         cv2.rectangle(frame, (xA, yA), (xB, yB), (0,255,0), 2)
+                #if(abs(boxArea) > minArea):            
+                if(w-x + 40 > h-y):  
+                    #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,255),2)
+                    for (xA, yA, xB, yB) in pick:
+                        # display the detected boxes in the colour picture
+                        cv2.rectangle(frame, (xA, yA), (xB, yB), (0,0,255), 2)
+                else:
+                    #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
+                    for (xA, yA, xB, yB) in pick:
+                    # display the detected boxes in the colour picture
+                        cv2.rectangle(frame, (xA, yA), (xB, yB), (0,255,0), 2)
 
     #Show Frames            
     cv2.imshow('frame',frame)
