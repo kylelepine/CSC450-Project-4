@@ -28,7 +28,7 @@ class BoundingBox:
     def get_height(self):
         return self.height
 
-class ComputerVision:
+class ImageManipulator:
 
     fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
     
@@ -176,7 +176,7 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
 
         if ret == True:
 
-            current_frame = ComputerVision(frame)
+            current_frame = ImageManipulator(frame)
             extracted_edges = current_frame.extract_edges()
             extracted_foreground = current_frame.extract_foreground()
 
