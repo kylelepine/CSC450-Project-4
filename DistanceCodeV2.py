@@ -8,7 +8,7 @@ import imutils
 cap = cv2.VideoCapture(cv2.CAP_DSHOW)
 
 #Default Background Subtractor to Detect Movement.
-fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
+fgbg = cv2.createBackgroundSubtractorMOG2(history=200, varThreshold=25, detectShadows=False)
 
 #Initialize Default Values
 fallFileCount = 0
@@ -36,40 +36,38 @@ def distanceCalculation(frame, w, x, y):
     #Find Distance by Subject's Width Relative to Camera
     if(w >= 250):
         distance = 0
-        folder = "FALL"
-        #fall = True
-        kernelSize = 30
+        kernelSize = 40
         cv2.putText(frame, "Too Close", (x,y), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
     if(w < 250 and w >= 120):
         distance = 5
         folder = "FIVE"
         fall = False
-        kernelSize = 25
+        kernelSize = 35
         cv2.putText(frame, "0-5 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 120 and w >= 100):
         distance = 10
         folder = "TEN"
         fall = False
-        kernelSize = 20
+        kernelSize = 30
         print(kernelSize)
         cv2.putText(frame, "5-10 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 100 and w >= 60):
         distance = 15
         folder = "FIFTEEN"
         fall = False
-        kernelSize = 15
+        kernelSize = 25
         cv2.putText(frame, "10-15 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 60 and w >= 40):
         distance = 20
         folder = "TWENTY"
         fall = False
-        kernelSize = 10
+        kernelSize = 20
         cv2.putText(frame, "15-20 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 40 and w >= 20):
         distance = 25
         folder = "TWENTYFIVE"
         fall = False
-        kernelSize = 1
+        kernelSize = 11
         cv2.putText(frame, "20-25 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
     if(w < 20):
         distance = 30
@@ -84,19 +82,23 @@ while(1):
     
     # Capturing the Frame and Boolean 
     ret, frame = cap.read()
-    fgmask = fgbg.apply(frame, learningRate = 0.04)
+
+    # Applying Gray Scale
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Applying Gaussian Blur to fgbg Mask Frame
+    blur = cv2.GaussianBlur(gray_frame, (9,9),0)
+
+    fgmask = fgbg.apply(blur, learningRate = 0.06)
     
-    gs_kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(1, 1))
-    gs_kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(50, 50))
+    gs_kernel_open = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
+    gs_kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20, 20))
   
     fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, gs_kernel_open)
-    testmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, gs_kernel_close)
-    
-    # Applying Gaussian Blur to fgbg Mask Frame
-    blur = cv2.GaussianBlur(fgmask,(5,5),0)
+    testmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, gs_kernel_close, iterations = 3)
 
     # Converting Frame with Threshhold (https://docs.opencv.org/master/d7/d4d/tutorial_py_thresholding.html)
-    ret, thresh = cv2.threshold(testmask, 91, 255, cv2.THRESH_BINARY)
+    thresh = cv2.adaptiveThreshold(testmask, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 199, 5)
     contours =  cv2.findContours(thresh, cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)[-2] 
 
     #Buffer Startup
@@ -150,21 +152,8 @@ while(1):
                 print("After distance")
                 
                 print(kernelSize)
+
                 #Create Template Based on Distance
-                # if(distance == 0):
-                #     crop_frame = fgmask[y:(y+h), x:(x+w)]
-                # if(distance == 5):
-                #     crop_frame = fgmask[y:(y+h), x:(x+250)]
-                # if(distance == 10):
-                #     crop_frame = fgmask[y:(y+h), x:(x+120)]
-                # if(distance == 15):
-                #     crop_frame = fgmask[y:(y+h), x:(x+100)]
-                # if(distance == 20):
-                #     crop_frame = fgmask[y:(y+h), x:(x+60)]
-                # if(distance == 25):
-                #     crop_frame = fgmask[y:(y+h), x:(x+40)]   
-                # if(distance == 30):
-                #     crop_frame = fgmask[y:(y+h), x:(x+20)]
                 if(distance == 0):
                     crop_frame = testmask[y:(y+h), x:(x+w)]
                 if(distance == 5):
@@ -181,14 +170,13 @@ while(1):
                     crop_frame = testmask[y:(y+h), x:(x+20)]
                 
                 #Create Kernel Sizes
-                #kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(kernelSize, kernelSize))
-                kernel_close = np.ones((kernelSize, kernelSize), np.uint8)
+                kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(kernelSize, kernelSize))
                 # print(kernelSize)
                 kernel_open = np.ones((1,1),np.uint8)
 
                 #Set Foreground Morph
                 foreground_morph = cv2.morphologyEx(crop_frame, cv2.MORPH_OPEN, kernel_open)
-                foreground_morph = cv2.morphologyEx(foreground_morph, cv2.MORPH_CLOSE, kernel_close)
+                foreground_morph = cv2.morphologyEx(foreground_morph, cv2.MORPH_CLOSE, kernel_close, iterations=3)
 
                 #Assign Templates into Separate Folders by Distance
                 if(folder == "FALL"):
@@ -217,7 +205,7 @@ while(1):
                 if(w-x + 40 > h-y):  
                     #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,255),2)
                     for (xA, yA, xB, yB) in pick:
-                        # display the detected boxes in the colour picture
+                        # display the detected boxes in the colour picture fgmask[y:(y+h), x:(x+w)]
                         cv2.rectangle(frame, (xA, yA), (xB, yB), (0,0,255), 2)
                 else:
                     #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
@@ -227,6 +215,7 @@ while(1):
 
     #Show Frames            
     cv2.imshow('frame',frame)
+    cv2.imshow('blur', blur)
     cv2.imshow('fgmask',fgmask)
     cv2.imshow('test',testmask)
     
