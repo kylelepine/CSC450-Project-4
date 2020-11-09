@@ -1,11 +1,14 @@
+from imutils.object_detection import non_max_suppression
+from imutils import paths
 import numpy as np
 from cv2 import cv2
+import imutils
 
 # Capture Video Camera
 cap = cv2.VideoCapture(cv2.CAP_DSHOW)
 
 #Default Background Subtractor to Detect Movement.
-fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
+fgbg = cv2.createBackgroundSubtractorMOG2(history=50, detectShadows=False)
 
 #Initialize Default Values
 fallFileCount = 0
@@ -32,73 +35,125 @@ def distanceCalculation(frame, w, x, y):
         distance = 0
         folder = "FALL"
         fall = True
-        cv2.putText(frame, "FALLEN", (x,y), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
+        cv2.putText(frame, "FALLEN", (x,y), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
     if(w < 250 and w >= 120):
         distance = 5
         folder = "FIVE"
         fall = False
-        cv2.putText(frame, "0-5 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+        cv2.putText(frame, "0-5 FT", (x,y), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
     if(w < 120 and w >= 100):
         distance = 10
         folder = "TEN"
         fall = False
-        cv2.putText(frame, "5-10 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+        cv2.putText(frame, "5-10 FT", (x,y), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
     if(w < 100 and w >= 60):
         distance = 15
         folder = "FIFTEEN"
         fall = False
-        cv2.putText(frame, "10-15 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+        cv2.putText(frame, "10-15 FT", (x,y), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
     if(w < 60 and w >= 40):
         distance = 20
         folder = "TWENTY"
         fall = False
-        cv2.putText(frame, "15-20 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+        cv2.putText(frame, "15-20 FT", (x,y), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
     if(w < 40 and w >= 20):
         distance = 25
         folder = "TWENTYFIVE"
         fall = False
-        cv2.putText(frame, "20-25 FT", (x,y), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+        cv2.putText(frame, "20-25 FT", (x,y), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
     if(w < 20):
         distance = 30
         folder = "None"
         fall = False
         cv2.putText(frame, "25 FT+", (x,y), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
     if(fall == True):
-        print("Ive fallen and I can't get up!")
+        print("Fall Detected!")
 
 
 #Runs Until Program is Manually Ended.
 while(1):
     #Capturing the Frame and Boolean 
     ret, frame = cap.read()
-    fgmask = fgbg.apply(frame)
+    #fgmask = fgbg.apply(frame, learningRate = 0.005)
+    fgmask = fgbg.apply(frame, learningRate = 0.02)
+
+    gs_kernel_close = np.ones((15,15),np.uint8)
+    gs_kernel_open = np.ones((1,1),np.uint8)
+
+    kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
+
+    ##ret2,binary2 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY)
+    ##binary2 = cv2.bitwise_not(binary)
+
+
+    
+    
+    
+    #fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, gs_kernel_open)
+    testmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel1)
 
     #Applying Gaussian Blur to fgbg Mask Frame
     blur = cv2.GaussianBlur(fgmask,(5,5),0)
 
     #Converting Frame with Threshhold (https://docs.opencv.org/master/d7/d4d/tutorial_py_thresholding.html)
-    ret, thresh = cv2.threshold(fgmask,91,255,cv2.THRESH_BINARY)
+    #ret, thresh = cv2.threshold(fgmask,91,255,cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(testmask,91,255,cv2.THRESH_BINARY)
     contours =  cv2.findContours(thresh, cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)[-2] 
 
     #Buffer Startup
     startupBuffer += 1   
 
-    if (startupBuffer > 200):
+    if (startupBuffer > 10):
 
         #Find Contours
         if len(contours) != 0:
             c = max(contours, key = cv2.contourArea)
+            #cv2.drawContours(frame, [c], -1, (0,255,0), thickness =- 1)
+            x, y, w, h = cv2.boundingRect(c)
+
+
+
+            ################## New Code #######################################
+
+            #rects4 = cv2.boundingRect(c)
+            #print(type(x), x)
             
-            x,y,w,h = cv2.boundingRect(c)
+            #rects2 = np.array([x,y, w, h])
+            #rects3 = rect(x, y, w, h)
+
+            #print(type(rects4), rects4, rects4[0])
+
+
+            
+            #print(x)
+            #rects = [x, y, w, h]
+            #print(rects2[0])
+
+            #for (x, y, w, h) in rects4:
+            #    cv2.rectangle(0, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+            
+            rects = np.array([[x, y, x + w, y + h]])
+
+            pick = non_max_suppression(rects, probs=None, overlapThresh=0.65)
+
+
+
+            #print(rects, pick)
+
+            ##################################### End New Code #########################################
             
             boxArea = w * h
-            minArea = 10000
 
-            #Invoke Distance Calculation
-            distanceCalculation(frame, w, x, y)
+            minArea = 500
+            if(boxArea > minArea):
+                #print(boxArea)
 
-            #Create Template Based on Distance
-            if (boxArea > minArea):
+                #Invoke Distance Calculation
+                distanceCalculation(frame, w, x, y)
+
+                #Create Template Based on Distance
+                #if (boxArea > minArea):
                 if(distance == 0):
                     crop_frame = fgmask[y:(y+h), x:(x+w)]
                 if(distance == 5):
@@ -144,16 +199,23 @@ while(1):
 
                 cv2.imshow('morphology', foreground_morph)
             
-            #Draw Bounding Boxes
-            #if(abs(boxArea) > minArea):            
-            if(w-x + 40 > h-y):  
-                cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,255),2)
-            else:
-                cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
+                #Draw Bounding Boxes
+                #if(abs(boxArea) > minArea):            
+                if(w-x + 40 > h-y):  
+                    #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,255),2)
+                    for (xA, yA, xB, yB) in pick:
+                        # display the detected boxes in the colour picture
+                        cv2.rectangle(frame, (xA, yA), (xB, yB), (0,0,255), 2)
+                else:
+                    #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
+                    for (xA, yA, xB, yB) in pick:
+                    # display the detected boxes in the colour picture
+                        cv2.rectangle(frame, (xA, yA), (xB, yB), (0,255,0), 2)
 
     #Show Frames            
     cv2.imshow('frame',frame)
     cv2.imshow('fgmask',fgmask)
+    cv2.imshow('test',testmask)
     
     #Terminate Program with ESC
     k = cv2.waitKey(30) & 0xff
