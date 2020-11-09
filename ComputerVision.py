@@ -30,9 +30,9 @@ class BoundingBox:
 
 class ComputerVision:
 
-    fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
+    fgbg = cv2.createBackgroundSubtractorMOG2(history=150, varThreshold=25, detectShadows=False)
     
-    close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
+    close_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(1, 1))
     open_kernel = np.ones((10,10),np.uint8)
     dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
 
@@ -42,13 +42,71 @@ class ComputerVision:
         self.source = frame
         self.detection_frame = self.source.copy()
         self.gray = self.convert_gray_filtered(self.source)
-        self.foreground = self.fgbg.apply(self.gray, learningRate = 0.02)
+        self.foreground = self.fgbg.apply(self.gray, learningRate = 0.04)
         self.bounding_box = self.focus_movement(self.source)
+        self.close_kernel = self.get_dynamic_kernel_size(self.source, self.bounding_box)
         if self.bounding_box is not None:
             self.movement_detected = True
         else:
             self.movement_detected = False
     
+    def get_dynamic_kernel_size(self, source, bounding_box):
+        frame = source
+        font = cv2.FONT_HERSHEY_COMPLEX
+        fall = False
+        global kernelSize
+
+        if (bounding_box is not None):
+            w = bounding_box.get_width()
+            h = bounding_box.get_height()
+            x_coordinates = bounding_box.get_x_coordinates()
+            y_coordinates = bounding_box.get_x_coordinates()
+
+            #Find Distance by Subject's Width Relative to Camera
+            if(w >= 250):
+                distance = 0
+                kernelSize = 40
+                cv2.putText(frame, "Too Close", (w,h), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
+            if(w < 250 and w >= 120):
+                distance = 5
+                folder = "FIVE"
+                fall = False
+                kernelSize = 35
+                cv2.putText(frame, "0-5 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 120 and w >= 100):
+                distance = 10
+                folder = "TEN"
+                fall = False
+                kernelSize = 30
+                print(kernelSize)
+                cv2.putText(frame, "5-10 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 100 and w >= 60):
+                distance = 15
+                folder = "FIFTEEN"
+                fall = False
+                kernelSize = 25
+                cv2.putText(frame, "10-15 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 60 and w >= 40):
+                distance = 20
+                folder = "TWENTY"
+                fall = False
+                kernelSize = 20
+                cv2.putText(frame, "15-20 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 40 and w >= 20):
+                distance = 25
+                folder = "TWENTYFIVE"
+                fall = False
+                kernelSize = 11
+                cv2.putText(frame, "20-25 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 20):
+                distance = 30
+                folder = "None"
+                fall = False
+                cv2.putText(frame, "25 FT+", (w,h), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
+            if(fall == True):
+                print("Fall Detected!")
+            return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(kernelSize, kernelSize))
+        
     def check_movement_detected(self):
         return self.movement_detected
 
@@ -56,16 +114,17 @@ class ComputerVision:
         # Converting the image to grayscale.
         gray = cv2.cvtColor(source, cv2.COLOR_BGR2GRAY)
         # Smoothing without removing edges.
-        gray_filtered = cv2.bilateralFilter(gray, 7, 75, 75)
+        #gray_filtered = cv2.bilateralFilter(gray, 7, 75, 75)
+        gray_filtered = cv2.GaussianBlur(gray, (9,9),0)
         return gray_filtered
         
     def extract_foreground(self):
         if self.bounding_box is not None:
             y_coordinates = self.bounding_box.get_y_coordinates()
             x_coordinates = self.bounding_box.get_x_coordinates()
-            foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.close_kernel)
+            foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.close_kernel, iterations=5)
             # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)            
-            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, kernel_open)   
+            foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, self.open_kernel, iterations=2)   
             # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close) 
             # foreground = cv2.dilate(foreground,kernel_dilate,iterations = 1)
             extracted_foreground = np.copy(foreground[y_coordinates[0]:y_coordinates[1], x_coordinates[0]:x_coordinates[1]])
@@ -92,11 +151,13 @@ class ComputerVision:
 
     # image splice by contour detection for foreground
     def focus_movement(self, source):
-
         bounding_box = None
 
-        foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.bounding_box_kernel)
+        print(self.bounding_box_kernel)
+        foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.bounding_box_kernel, iterations=3)
+        #bounding_thresh = cv2.adaptiveThreshold(foreground, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 199, 5)
         bounding_ret, bounding_thresh = cv2.threshold(foreground, 91, 255, cv2.THRESH_BINARY)
+        cv2.imshow("Focus Movement", bounding_thresh)
         contours = cv2.findContours(bounding_thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
         if len(contours) != 0:
@@ -132,6 +193,8 @@ class ComputerVision:
         if self.bounding_box is not None:
             self.draw_bounding_box(self.detection_frame)
         cv2.imshow("Detection Frame", self.detection_frame)
+        cv2.imshow("fgmask", self.foreground)
+        #cv2.imshow("bounding box", self.bounding_box)
         
 def showImage(source):
 
