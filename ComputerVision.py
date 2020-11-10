@@ -196,6 +196,13 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                         print("fall")
                     elif (edge_classification == 'upright') & (foreground_classification == 'upright'):
                         print("upright")
+                    elif (edge_classification == 'sitting') & (foreground_classification == 'sitting'):
+                        print("sitting")
+                    elif (edge_classification == 'lying') & (foreground_classification == 'lying'):
+                        print("lying")
+                    elif (edge_classification == 'unrecognized') & (foreground_classification == 'unrecognized'):
+                        print("unrecognized object")
+                    
 
                 if saveTemplate:
 

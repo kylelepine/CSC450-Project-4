@@ -11,7 +11,7 @@ def systemUserInterface(templates, database, foregroundClassifier, edgeClassifie
         print("""
         Command:(button)              Description:
         view_video:(1)                Displays available videos in 'fall_samples' with computer vision.
-        view_webcam:(2)            s   Displays connected webcam with computer vision
+        view_webcam:(2)               Displays connected webcam with computer vision
         modify templates:(3)          Allows user to modify templates that exist in the database.
         compare_template:(4)          Demonstrates comparing a template to a frame.
         database:(5)                  Access Database UI.
