@@ -29,20 +29,18 @@ class BoundingBox:
         return self.height
 
 class ComputerVision:
-
-    fgbg = cv2.createBackgroundSubtractorMOG2(history=150, varThreshold=25, detectShadows=False)
+    fgbg = cv2.createBackgroundSubtractorMOG2(history=200, varThreshold=25, detectShadows=False)
     
     close_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(1, 1))
     open_kernel = np.ones((10,10),np.uint8)
     dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
-
     bounding_box_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
 
     def __init__(self, frame):
         self.source = frame
         self.detection_frame = self.source.copy()
         self.gray = self.convert_gray_filtered(self.source)
-        self.foreground = self.fgbg.apply(self.gray, learningRate = 0.04)
+        self.foreground = self.fgbg.apply(self.gray, learningRate = 0.02)
         self.bounding_box = self.focus_movement(self.source)
         self.close_kernel = self.get_dynamic_kernel_size(self.source, self.bounding_box)
         if self.bounding_box is not None:
@@ -53,58 +51,52 @@ class ComputerVision:
     def get_dynamic_kernel_size(self, source, bounding_box):
         frame = source
         font = cv2.FONT_HERSHEY_COMPLEX
-        fall = False
-        global kernelSize
 
         if (bounding_box is not None):
             w = bounding_box.get_width()
             h = bounding_box.get_height()
             x_coordinates = bounding_box.get_x_coordinates()
             y_coordinates = bounding_box.get_x_coordinates()
+            kernelSize = 1
+            frame = self.detection_frame
 
             #Find Distance by Subject's Width Relative to Camera
             if(w >= 250):
                 distance = 0
-                kernelSize = 40
+                kernelSize = 30
                 cv2.putText(frame, "Too Close", (w,h), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
             if(w < 250 and w >= 120):
                 distance = 5
                 folder = "FIVE"
-                fall = False
-                kernelSize = 35
+                kernelSize = 25
                 cv2.putText(frame, "0-5 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 120 and w >= 100):
                 distance = 10
                 folder = "TEN"
-                fall = False
-                kernelSize = 30
+                kernelSize = 20
                 print(kernelSize)
                 cv2.putText(frame, "5-10 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 100 and w >= 60):
                 distance = 15
                 folder = "FIFTEEN"
-                fall = False
-                kernelSize = 25
+                kernelSize = 15
                 cv2.putText(frame, "10-15 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 60 and w >= 40):
-                distance = 20
+                distance = 10
                 folder = "TWENTY"
-                fall = False
                 kernelSize = 20
                 cv2.putText(frame, "15-20 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 40 and w >= 20):
                 distance = 25
                 folder = "TWENTYFIVE"
-                fall = False
-                kernelSize = 11
+                kernelSize = 5
                 cv2.putText(frame, "20-25 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 20):
                 distance = 30
                 folder = "None"
-                fall = False
                 cv2.putText(frame, "25 FT+", (w,h), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
-            if(fall == True):
-                print("Fall Detected!")
+
+            self.detection_frame = frame
             return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(kernelSize, kernelSize))
         
     def check_movement_detected(self):
@@ -114,19 +106,19 @@ class ComputerVision:
         # Converting the image to grayscale.
         gray = cv2.cvtColor(source, cv2.COLOR_BGR2GRAY)
         # Smoothing without removing edges.
-        #gray_filtered = cv2.bilateralFilter(gray, 7, 75, 75)
-        gray_filtered = cv2.GaussianBlur(gray, (9,9),0)
+        #gray_filtered = cv2.bilateralFilter(gray, 10, 100, 100)
+        gray_filtered = cv2.GaussianBlur(gray, (21, 21), 0)
+        cv2.imshow('gray_filtered', gray_filtered)
         return gray_filtered
         
     def extract_foreground(self):
         if self.bounding_box is not None:
             y_coordinates = self.bounding_box.get_y_coordinates()
             x_coordinates = self.bounding_box.get_x_coordinates()
-            foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.close_kernel, iterations=5)
-            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)            
-            foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, self.open_kernel, iterations=2)   
-            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close) 
-            # foreground = cv2.dilate(foreground,kernel_dilate,iterations = 1)
+            foreground = cv2.erode(self.foreground, self.dilate_kernel,iterations = 3)
+            foreground = cv2.dilate(foreground, self.dilate_kernel, iterations = 3)
+            foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, self.close_kernel, iterations=10)
+            foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, self.open_kernel, iterations=10)   
             extracted_foreground = np.copy(foreground[y_coordinates[0]:y_coordinates[1], x_coordinates[0]:x_coordinates[1]])
             extracted_foreground = cv2.resize(extracted_foreground, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
             return extracted_foreground
@@ -153,7 +145,6 @@ class ComputerVision:
     def focus_movement(self, source):
         bounding_box = None
 
-        print(self.bounding_box_kernel)
         foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.bounding_box_kernel, iterations=3)
         #bounding_thresh = cv2.adaptiveThreshold(foreground, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 199, 5)
         bounding_ret, bounding_thresh = cv2.threshold(foreground, 91, 255, cv2.THRESH_BINARY)
@@ -231,6 +222,8 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
     2           Toggles classification 
     """)
 
+    width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
     # Read the video
     while(cap.isOpened()):
 
@@ -242,36 +235,42 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
             current_frame = ComputerVision(frame)
             extracted_edges = current_frame.extract_edges()
             extracted_foreground = current_frame.extract_foreground()
+            if (extracted_foreground is not None):
+                foregroundHeight, foregroundWidth = extracted_foreground.shape
+                print(height)
+                print(foregroundHeight)
+                print(width)
+                print(foregroundWidth)
+                if (height != foregroundHeight and width != foregroundWidth):
+                    if current_frame.check_movement_detected():
 
-            if current_frame.check_movement_detected():
+                        if checkTemplate:
+                            
+                            total_comparison_time_start = timer()
 
-                if checkTemplate:
-                    
-                    total_comparison_time_start = timer()
+                            edge_classification = edgeClassifier.classify(extracted_edges)
+                            foreground_classification = foregroundClassifier.classify(extracted_foreground)
+                            
+                            total_comparison_time_end = timer()
+                            # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
+                            
+                            if (edge_classification == 'falling') & (foreground_classification == 'falling'):
+                                print("fall")
+                            elif (edge_classification == 'upright') & (foreground_classification == 'upright'):
+                                print("upright")
 
-                    edge_classification = edgeClassifier.classify(extracted_edges)
-                    foreground_classification = foregroundClassifier.classify(extracted_foreground)
-                    
-                    total_comparison_time_end = timer()
-                    # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
-                    
-                    if (edge_classification == 'falling') & (foreground_classification == 'falling'):
-                        print("fall")
-                    elif (edge_classification == 'upright') & (foreground_classification == 'upright'):
-                        print("upright")
+                        if saveTemplate:
 
-                if saveTemplate:
-
-                    save_path_foreground_template = f"./templates/cropped_templates/foreground/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
-                    save_path_edge_template = f"./templates/cropped_templates/edge/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                            save_path_foreground_template = f"./templates/cropped_templates/foreground/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                            save_path_edge_template = f"./templates/cropped_templates/edge/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                            
+                            cv2.imwrite(save_path_foreground_template, extracted_foreground)
+                            cv2.imwrite(save_path_edge_template, extracted_edges)
+                            
+                            frame_count += 1
                     
-                    cv2.imwrite(save_path_foreground_template, extracted_foreground)
-                    cv2.imwrite(save_path_edge_template, extracted_edges)
-                    
-                    frame_count += 1
-            
-            # Display the resulting frame
-            current_frame.display_cv()
+                    # Display the resulting frame
+                    current_frame.display_cv()
 
             # controls
             key = cv2.waitKey(25) & 0xFF
