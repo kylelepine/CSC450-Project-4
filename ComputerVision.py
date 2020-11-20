@@ -74,7 +74,6 @@ class ComputerVision:
                 distance = 10
                 folder = "TEN"
                 kernelSize = 20
-                print(kernelSize)
                 cv2.putText(frame, "5-10 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 100 and w >= 60):
                 distance = 15
@@ -202,6 +201,7 @@ def showImage(source):
 def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate = False, checkTemplate = False, sessionName = None):
 
     frame_count = 0
+    fall_detected = False
 
     if saveTemplate:
         print("Saving frames as templates")
@@ -237,10 +237,6 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
             extracted_foreground = current_frame.extract_foreground()
             if (extracted_foreground is not None):
                 foregroundHeight, foregroundWidth = extracted_foreground.shape
-                print(height)
-                print(foregroundHeight)
-                print(width)
-                print(foregroundWidth)
                 if (height != foregroundHeight and width != foregroundWidth):
                     if current_frame.check_movement_detected():
 
@@ -256,6 +252,7 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                             
                             if (edge_classification == 'falling') & (foreground_classification == 'falling'):
                                 print("fall")
+                                fall_detected = True
                             elif (edge_classification == 'upright') & (foreground_classification == 'upright'):
                                 print("upright")
 
@@ -297,6 +294,10 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
     cap.release()
     # Closes all the frames
     cv2.destroyAllWindows()
+    if (fall_detected == True):
+        return True
+    else:
+        return False
 
 def imagePathToByteString(path):
     with open(path, 'rb') as f:
