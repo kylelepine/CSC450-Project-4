@@ -1,37 +1,53 @@
 
 import cv2
 import unittest
+import psycopg2
 import ComputerVision
 import Templates
 import HumanStateClassifier
 
 class TestFallCasesHelper:
-    def displayTestCV(self, foregroundClassifier, edgeClassifier, fileName):
+    def displayTestCV(self, local, fileName):
+        if (local == True):
+            # Load Templates Locally
+            templates = Templates.loadTemplatesLocally()
+        else:
+            # Load Templates from Database
+            LOCAL_DATABASE_NAME = "postgres"
+            LOCAL_DATABASE_PASSWORD = "password"
+            database = Templates.TemplateDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
+            database.connect()
+            templates = {'edge': {}, 'foreground': {}}
+            template_characteristics = templates.keys()
+            template_types = ['upright', 'falling', 'sitting', 'lying']
+
+            for template_characteristic in template_characteristics:
+                for template_type in template_types:
+                    templates[template_characteristic][template_type] = []
+            if database.connected():
+                templates = database.load_templates(templates)
+
+        # Classifiers
+        edge_classifier = HumanStateClassifier.KNeighborsClassifier(templates['edge'], k=4)
+        foreground_classifier = HumanStateClassifier.KNeighborsClassifier(templates['foreground'], k=4)
+
         # Computer Vision
-        return ComputerVision.display(foregroundClassifier=foregroundClassifier,
-                                    edgeClassifier=edgeClassifier,
+        return ComputerVision.display(foregroundClassifier=foreground_classifier,
+                                    edgeClassifier=edge_classifier,
                                     videoPath=fileName,
                                     saveTemplate=False,
                                     checkTemplate=True)
 
-#Basic Framework For Unit Testing Fall Detection
+# Basic Framework For Unit Testing Fall Detection
 
 class TestFallCases(unittest.TestCase):
     # Load Templates Locally
     def test0_5(self):
-        # Load Templates
-        templates = Templates.loadTemplatesLocally()
-
-        # Classifiers
         test_case_helper = TestFallCasesHelper()
-        edge_classifier = HumanStateClassifier.KNeighborsClassifier(templates['edge'], k=4)
-        foreground_classifier = HumanStateClassifier.KNeighborsClassifier(templates['foreground'], k=4)
 
         # Video file for 0-5 feet
         fileName = './fall_samples/fall-01-cam0.mp4'
-    
-        fall_detected = test_case_helper.displayTestCV(foregroundClassifier=foreground_classifier, edgeClassifier=edge_classifier, fileName=fileName)
-
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
 
     def test5_10(self):
@@ -68,11 +84,23 @@ class TestFallCases(unittest.TestCase):
         testFile = True
         #run method for fall detection using test video. Return boolean
         self.assertEqual(testFile,True)
-    
-    def testDatabaseConnection(self):
-        # Test Connection With Database
-        # Query Data or get status
+
+    def testCamera(self):
         test = True
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            test = False
+        self.assertEqual(test,True)
+    
+    def testDBConnection(self):
+        try:
+            self.conn = psycopg2.connect(host = 'localhost', \
+                database = 'CSC-450_FDS', user = 'postgres', \
+                password = 'Apcid28;6jdn')
+            test = True
+        except (Exception, psycopg2.DatabaseError):
+            test = False
+        self.assertEqual(test, True)
 
 if __name__ == '__main__':
     unittest.main()
