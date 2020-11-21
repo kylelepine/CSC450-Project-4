@@ -21,7 +21,9 @@ def systemUserInterface(templates, database, foregroundClassifier, edgeClassifie
 
         if command == '1':
 
-            available_videos = ['./fall_samples/fall-01-cam0.mp4', './fall_samples/fall-27-cam0.mp4']
+            available_videos = ['./fall_samples/fall-01-cam0.mp4', './fall_samples/fall-02-cam0.mp4',
+            './fall_samples/fall-03-cam0.mp4','./fall_samples/fall-04-cam0.mp4', './fall_samples/fall-05-cam0.mp4',
+            './fall_samples/fall-06-cam0.mp4', './fall_samples/fall-07-cam0.mp4', './fall_samples/fall-27-cam0.mp4']
 
             print("Please choose from: ")
 

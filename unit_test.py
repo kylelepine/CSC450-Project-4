@@ -8,6 +8,20 @@ import HumanStateClassifier
 
 class TestFallCasesHelper:
     def displayTestCV(self, local, fileName):
+        templates = self.loadTemplates(local=local)
+
+        # Classifiers
+        edge_classifier = HumanStateClassifier.KNeighborsClassifier(templates['edge'], k=4)
+        foreground_classifier = HumanStateClassifier.KNeighborsClassifier(templates['foreground'], k=4)
+
+        # Computer Vision
+        return ComputerVision.display(foregroundClassifier=foreground_classifier,
+                                    edgeClassifier=edge_classifier,
+                                    videoPath=fileName,
+                                    saveTemplate=False,
+                                    checkTemplate=True)
+
+    def loadTemplates(self, local):
         if (local == True):
             # Load Templates Locally
             templates = Templates.loadTemplatesLocally()
@@ -27,63 +41,59 @@ class TestFallCasesHelper:
             if database.connected():
                 templates = database.load_templates(templates)
 
-        # Classifiers
-        edge_classifier = HumanStateClassifier.KNeighborsClassifier(templates['edge'], k=4)
-        foreground_classifier = HumanStateClassifier.KNeighborsClassifier(templates['foreground'], k=4)
-
-        # Computer Vision
-        return ComputerVision.display(foregroundClassifier=foreground_classifier,
-                                    edgeClassifier=edge_classifier,
-                                    videoPath=fileName,
-                                    saveTemplate=False,
-                                    checkTemplate=True)
+        return templates
 
 # Basic Framework For Unit Testing Fall Detection
 
 class TestFallCases(unittest.TestCase):
-    # Load Templates Locally
     def test0_5(self):
-        test_case_helper = TestFallCasesHelper()
-
         # Video file for 0-5 feet
+        test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-01-cam0.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
 
     def test5_10(self):
-        #Video file for 5-10 feet
-        testFile = True
-        #run method for fall detection using test video. Return boolean
-        self.assertEqual(testFile,True)
+        # Video file for 5-10 feet
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/fall-02-cam0.mp4'
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, True)
     
     def test10_15(self):
         #Video file for 10-15 feet
-        testFile = True
-        self.assertEqual(testFile,True)
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/fall-03-cam0.mp4'
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, True)
     
     def test15_20(self):
         #Video file for 15-20 feet
-        testFile = True
-        #run method for fall detection using test video. Return boolean
-        self.assertEqual(testFile,True)
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/fall-04-cam0.mp4'
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, True)
     
     def test20_25(self):
         #Video file for 20-25 feet
-        testFile = True
-        #run method for fall detection using test video. Return boolean
-        self.assertEqual(testFile,True)
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/fall-05-cam0.mp4'
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, True)
 
     def testLowLight(self):
         #Video file for low light
-        testFile = True
-        #run method for fall detection using test video. Return boolean
-        self.assertEqual(testFile,True)
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/fall-06-cam0.mp4'
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, True)
     
     def testObstructed(self):
         #Video file for obstructed view
-        testFile = True
-        #run method for fall detection using test video. Return boolean
-        self.assertEqual(testFile,True)
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/fall-07-cam0.mp4'
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, True)
 
     def testCamera(self):
         test = True

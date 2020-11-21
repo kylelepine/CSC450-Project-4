@@ -253,8 +253,6 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                             if (edge_classification == 'falling') & (foreground_classification == 'falling'):
                                 print("fall")
                                 fall_detected = True
-                            elif (edge_classification == 'upright') & (foreground_classification == 'upright'):
-                                print("upright")
 
                         if saveTemplate:
 
