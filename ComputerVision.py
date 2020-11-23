@@ -3,9 +3,9 @@ from cv2 import cv2
 from queue import Queue 
 from timeit import default_timer as timer
 
-# from imutils.object_detection import non_max_suppression
-# from imutils import paths
-# import imutils
+from imutils.object_detection import non_max_suppression
+from imutils import paths
+import imutils
 
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
@@ -87,10 +87,27 @@ class FrameHistory:
             width += bounding_box.get_width()
             height += bounding_box.get_height()
         
-        width = round(width/len(self.bounding_boxes))
-        height = round(height/len(self.bounding_boxes))
+        width = width//len(self.bounding_boxes)
+        height = height//len(self.bounding_boxes)
 
         return width, height
+    
+    def check_continuous_decrease(self):
+
+        previous_area = 640 * 480
+        continuous_decrease = True
+        
+        for bounding_box in self.bounding_boxes:
+            # print(f'previous_area: {previous_area}')
+            # print(f'area: {bounding_box.get_area()}')
+            area = bounding_box.get_area()
+
+            if area > previous_area:
+                continuous_decrease = False
+
+            previous_area = area
+
+        return continuous_decrease
     
     def max_bounding_box(self):
         width = 0
@@ -176,6 +193,7 @@ class ImageManipulator:
         if self.bounding_box is not None:
             y1, y2 = self.bounding_box.get_y_coordinates()
             x1, x2 = self.bounding_box.get_x_coordinates()
+
             # Performs Canny edge detection on filtered frame.
             edges_filtered = cv2.Canny(self.gray, 60, 120)
 
@@ -188,7 +206,6 @@ class ImageManipulator:
         else:
             return None
 
-    # image splice by contour detection for foreground
     def focus_movement(self, source):
 
         bounding_box = None
@@ -200,10 +217,10 @@ class ImageManipulator:
         if len(contours) != 0:
             contour = max(contours, key = cv2.contourArea)
             x_pos, y_pos, width, height = cv2.boundingRect(contour)
-            # bounding_rect = np.array([[x_pos, y_pos, x_pos + width, y_pos + height]])
-            # optimal_pick = non_max_suppression(bounding_rect, probs=None, overlapThresh=0.65)
-            bounding_box = BoundingBox(x1=x_pos, x2=x_pos + width, y1=y_pos, y2=y_pos + height, width=width, height=height)
-            # bounding_box = {'x': (x_pos, x_pos + width), 'y': (y_pos, y_pos + height), "width": width, "height": height}
+            bounding_rect = np.array([[x_pos, y_pos, x_pos + width, y_pos + height]])
+            optimal_pick = non_max_suppression(bounding_rect, probs=None, overlapThresh=0.65)
+            for (x1, y1, x2, y2) in optimal_pick:
+                bounding_box = BoundingBox(x1=x1, x2=x2, y1=y1, y2=y2, width= x2 - x1, height= y2 - y1)
 
         return bounding_box
 
@@ -226,8 +243,8 @@ class ImageManipulator:
                 
                 cv2.rectangle(source, (x_coordinates[0], y_coordinates[0]), (x_coordinates[1], y_coordinates[1]), (0, 255, 0), 2)
     
-    def display_cv(self):
-        if self.bounding_box is not None:
+    def display_cv(self, showBox = True):
+        if self.bounding_box is not None and showBox:
             self.draw_bounding_box(self.detection_frame)
 
         cv2.imshow("Detection Frame", self.detection_frame)
@@ -280,62 +297,65 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
         if ret == True:
 
             current_frame = ImageManipulator(frame)
+            print(f"frame_count: {frame_count}")
 
             if current_frame.check_movement_detected():
-
-                print(f"frame_count: {frame_count}")
-
-                if frame_count >= FRAME_SAVE_COUNT:
-                    
-                    # Check for potential obstruction
-                    average_area = frame_history.average_area()
-                    current_bounding_box = current_frame.get_bounding_box()
-
-                    if current_bounding_box.get_area() * 3 < average_area * 4:
-                        
-                        width, height = frame_history.average_dimensions()
-                        current_bounding_box.change_dimensions(width, height)
-                        current_frame.set_bounding_box(current_bounding_box)
-                
-                extracted_edges = current_frame.extract_edges()
-                extracted_foreground = current_frame.extract_foreground()
 
                 # Current frame bounding box gets added to frame history
                 if frame_history.full():
                     frame_history.forget(1)
                 frame_history.add_bounding_box(current_frame.get_bounding_box())
 
-                if checkTemplate:
+                if not frame_history.check_continuous_decrease():
+                    # Check for potential obstruction
+                    average_area = frame_history.average_area()
+                    current_bounding_box = current_frame.get_bounding_box()
 
-                    # total_comparison_time_start = timer()
+                    if current_bounding_box.get_area() < average_area:
+                        
+                        width, height = frame_history.average_dimensions()
+                        current_bounding_box.change_dimensions(width, height)
+                        current_frame.set_bounding_box(current_bounding_box)
+                    
+                    extracted_edges = current_frame.extract_edges()
+                    extracted_foreground = current_frame.extract_foreground()
 
-                    edge_classification = edgeClassifier.classify(extracted_edges)
-                    foreground_classification = foregroundClassifier.classify(extracted_foreground)
-                    
-                    # total_comparison_time_end = timer()
-                    # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
-                    
-                    if (edge_classification == 'falling') | (foreground_classification == 'falling'):
-                        print("fall")
-                    elif (edge_classification == 'upright') | (foreground_classification == 'upright'):
-                        print("upright")
-                    elif (edge_classification == 'sitting') | (foreground_classification == 'sitting'):
-                        print("sitting")
-                    elif (edge_classification == 'lying') | (foreground_classification == 'lying'):
-                        print("lying")
-                    elif (edge_classification == 'unrecognized') | (foreground_classification == 'unrecognized'):
-                        print("unrecognized object")
-                    
-                if saveTemplate:
+                
 
-                    save_path_foreground_template = f"./templates/cropped_templates/foreground/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
-                    save_path_edge_template = f"./templates/cropped_templates/edge/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                    if checkTemplate:
+
+                        # total_comparison_time_start = timer()
+
+                        edge_classification = edgeClassifier.classify(extracted_edges)
+                        foreground_classification = foregroundClassifier.classify(extracted_foreground)
+                        
+                        # total_comparison_time_end = timer()
+                        # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
+                        
+                        if (edge_classification == 'falling') or (foreground_classification == 'falling'):
+                            print("fall")
+                        elif (edge_classification == 'upright') or (foreground_classification == 'upright'):
+                            print("upright")
+                        elif (edge_classification == 'sitting') or (foreground_classification == 'sitting'):
+                            print("sitting")
+                        elif (edge_classification == 'lying') or (foreground_classification == 'lying'):
+                            print("lying")
+                        elif (edge_classification == 'unrecognized') or (foreground_classification == 'unrecognized'):
+                            print("unrecognized object")
+                        
+                    if saveTemplate:
+
+                        save_path_foreground_template = f"./templates/cropped_templates/foreground/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                        save_path_edge_template = f"./templates/cropped_templates/edge/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
+                        
+                        cv2.imwrite(save_path_foreground_template, extracted_foreground)
+                        cv2.imwrite(save_path_edge_template, extracted_edges)
                     
-                    cv2.imwrite(save_path_foreground_template, extracted_foreground)
-                    cv2.imwrite(save_path_edge_template, extracted_edges)
-            
-            # Display the resulting frame
-            current_frame.display_cv()
+                    # Display the resulting frame
+                    current_frame.display_cv()
+
+                else:
+                    current_frame.display_cv(showBox=False)
 
             # controls
             key = cv2.waitKey(25) & 0xFF
