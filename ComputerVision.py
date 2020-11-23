@@ -7,6 +7,9 @@ from timeit import default_timer as timer
 # from imutils import paths
 # import imutils
 
+SCREEN_WIDTH = 640
+SCREEN_HEIGHT = 480
+
 class BoundingBox:
     
     def __init__(self, x1, x2, y1, y2, width, height):
@@ -31,10 +34,48 @@ class BoundingBox:
     
     def get_area(self):
         return self.height * self.width
+    
+    def get_center(self):
+        
+        x_center = self.x1 + (self.x2 - self.x1)//2
+        y_center = self.y1 + (self.y2 - self.y1)//2
+
+        return x_center, y_center
+    
+    def change_dimensions(self, width, height):
+        x_center, y_center = self.get_center()
+
+        self.width = width
+
+        # print(f"x1:{self.x1}")
+        self.x1 = x_center - (width//2)
+        # print(f"x1:{self.x1}")
+        if self.x1 < 0 or self.x1 > SCREEN_WIDTH: self.x1 = 0
+        # print(f"x1:{self.x1}")
+
+        # print(f"x2:{self.x2}")
+        self.x2 = x_center + (width//2)
+        # print(f"x2:{self.x2}")
+        if self.x2 < 0 or self.x2 > SCREEN_WIDTH: self.x2 = SCREEN_WIDTH
+        # print(f"x2:{self.x2}")
+        
+        self.height = height
+
+        # print(f"y1:{self.y1}")
+        self.y1 = y_center - (height//2)
+        # print(f"y1:{self.y1}")
+        if self.y1 < 0 or self.y1 > SCREEN_HEIGHT: self.y1 = 0
+        # print(f"y1:{self.y1}")
+
+        # print(f"y2:{self.y2}")
+        self.y2 = y_center + (height//2)
+        # print(f"y2:{self.y2}")
+        if self.y2 < 0 or self.y2 > SCREEN_HEIGHT: self.y2 = SCREEN_HEIGHT
+        # print(f"y2:{self.y2}")
 
 class FrameHistory:
 
-    def __init__(self, frameSaveCount = 30):
+    def __init__(self, frameSaveCount = 10):
         self.frame_save_count = frameSaveCount
         self.bounding_boxes = np.array([])
         
@@ -46,8 +87,8 @@ class FrameHistory:
             width += bounding_box.get_width()
             height += bounding_box.get_height()
         
-        width = width/len(self.bounding_boxes)
-        height = height/len(self.bounding_boxes)
+        width = round(width/len(self.bounding_boxes))
+        height = round(height/len(self.bounding_boxes))
 
         return width, height
     
@@ -84,8 +125,8 @@ class ImageManipulator:
     fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
     
     close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
-    open_kernel = np.ones((10,10),np.uint8)
-    dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
+    # open_kernel = np.ones((10,10),np.uint8)
+    # dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
 
     bounding_box_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
 
@@ -188,7 +229,9 @@ class ImageManipulator:
     def display_cv(self):
         if self.bounding_box is not None:
             self.draw_bounding_box(self.detection_frame)
+
         cv2.imshow("Detection Frame", self.detection_frame)
+        cv2.imshow('Foreground Frame', self.foreground)
         
 def showImage(source):
 
@@ -204,7 +247,7 @@ def showImage(source):
 
 def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate = False, checkTemplate = False, sessionName = None):
 
-    FRAME_SAVE_COUNT = 30
+    FRAME_SAVE_COUNT = 5
     frame_history = FrameHistory(FRAME_SAVE_COUNT)
     
     frame_count = 0
@@ -239,18 +282,20 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
             current_frame = ImageManipulator(frame)
 
             if current_frame.check_movement_detected():
-                
-                # if frame_count >= FRAME_SAVE_COUNT:
-                #     # Check for potential obstruction
-                #     average_area = frame_history.average_area()
-                #     current_bounding_box = current_frame.get_bounding_box()
-                #     if current_bounding_box.get_area() < average_area:
-                #         x1, x2 = current_bounding_box.get_x_coordinates()
-                #         y1, y2 = current_bounding_box.get_y_coordinates()
-                #         width, height = frame_history.average_dimensions()
 
-                #         current_bounding_box = BoundingBox(x1=x1, x2=x2 + width, y1=y1, y2=y2 + height, width=width, height=height)
-                #         current_frame.set_bounding_box(current_bounding_box)
+                print(f"frame_count: {frame_count}")
+
+                if frame_count >= FRAME_SAVE_COUNT:
+                    
+                    # Check for potential obstruction
+                    average_area = frame_history.average_area()
+                    current_bounding_box = current_frame.get_bounding_box()
+
+                    if current_bounding_box.get_area() * 3 < average_area * 4:
+                        
+                        width, height = frame_history.average_dimensions()
+                        current_bounding_box.change_dimensions(width, height)
+                        current_frame.set_bounding_box(current_bounding_box)
                 
                 extracted_edges = current_frame.extract_edges()
                 extracted_foreground = current_frame.extract_foreground()
@@ -262,23 +307,23 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
 
                 if checkTemplate:
 
-                    total_comparison_time_start = timer()
+                    # total_comparison_time_start = timer()
 
                     edge_classification = edgeClassifier.classify(extracted_edges)
                     foreground_classification = foregroundClassifier.classify(extracted_foreground)
                     
-                    total_comparison_time_end = timer()
+                    # total_comparison_time_end = timer()
                     # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
                     
                     if (edge_classification == 'falling') | (foreground_classification == 'falling'):
                         print("fall")
-                    elif (edge_classification == 'upright') & (foreground_classification == 'upright'):
+                    elif (edge_classification == 'upright') | (foreground_classification == 'upright'):
                         print("upright")
                     elif (edge_classification == 'sitting') | (foreground_classification == 'sitting'):
                         print("sitting")
-                    elif (edge_classification == 'lying') & (foreground_classification == 'lying'):
+                    elif (edge_classification == 'lying') | (foreground_classification == 'lying'):
                         print("lying")
-                    elif (edge_classification == 'unrecognized') & (foreground_classification == 'unrecognized'):
+                    elif (edge_classification == 'unrecognized') | (foreground_classification == 'unrecognized'):
                         print("unrecognized object")
                     
                 if saveTemplate:
