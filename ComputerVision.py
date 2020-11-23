@@ -65,38 +65,38 @@ class ComputerVision:
             #Find Distance by Subject's Width Relative to Camera
             if(w >= 250):
                 distance = 0
-                kernelSize = 40
+                kernelSize = 22
                 cv2.putText(frame, "Too Close", (w,h), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
             if(w < 250 and w >= 120):
                 distance = 5
                 folder = "FIVE"
                 fall = False
-                kernelSize = 35
+                kernelSize = 18
                 cv2.putText(frame, "0-5 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 120 and w >= 100):
                 distance = 10
                 folder = "TEN"
                 fall = False
-                kernelSize = 30
+                kernelSize = 15
                 print(kernelSize)
                 cv2.putText(frame, "5-10 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 100 and w >= 60):
                 distance = 15
                 folder = "FIFTEEN"
                 fall = False
-                kernelSize = 25
+                kernelSize = 12
                 cv2.putText(frame, "10-15 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 60 and w >= 40):
                 distance = 20
                 folder = "TWENTY"
                 fall = False
-                kernelSize = 20
+                kernelSize = 10
                 cv2.putText(frame, "15-20 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 40 and w >= 20):
                 distance = 25
                 folder = "TWENTYFIVE"
                 fall = False
-                kernelSize = 11
+                kernelSize = 5
                 cv2.putText(frame, "20-25 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
             if(w < 20):
                 distance = 30
@@ -160,13 +160,14 @@ class ComputerVision:
         cv2.imshow("Focus Movement", bounding_thresh)
         contours = cv2.findContours(bounding_thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
-        if len(contours) != 0:
-            contour = max(contours, key = cv2.contourArea)
-            x_pos, y_pos, width, height = cv2.boundingRect(contour)
-            # bounding_rect = np.array([[x_pos, y_pos, x_pos + width, y_pos + height]])
-            # optimal_pick = non_max_suppression(bounding_rect, probs=None, overlapThresh=0.65)
-            bounding_box = BoundingBox(x1=x_pos, x2=x_pos + width, y1=y_pos, y2=y_pos + height, width=width, height=height)
-            # bounding_box = {'x': (x_pos, x_pos + width), 'y': (y_pos, y_pos + height), "width": width, "height": height}
+        for cntr in contours:
+            if len(contours) != 0:
+                #contour = max(contours, key = cv2.contourArea)
+                x_pos, y_pos, width, height = cv2.boundingRect(cntr)
+                # bounding_rect = np.array([[x_pos, y_pos, x_pos + width, y_pos + height]])
+                # optimal_pick = non_max_suppression(bounding_rect, probs=None, overlapThresh=0.65)
+                bounding_box = BoundingBox(x1=x_pos, x2=x_pos + width, y1=y_pos, y2=y_pos + height, width=width, height=height)
+                # bounding_box = {'x': (x_pos, x_pos + width), 'y': (y_pos, y_pos + height), "width": width, "height": height}
 
         return bounding_box
 
