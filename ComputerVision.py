@@ -1,5 +1,6 @@
 import numpy as np
 from cv2 import cv2
+from queue import Queue 
 from timeit import default_timer as timer
 
 # from imutils.object_detection import non_max_suppression
@@ -27,6 +28,56 @@ class BoundingBox:
     
     def get_height(self):
         return self.height
+    
+    def get_area(self):
+        return self.height * self.width
+
+class FrameHistory:
+
+    def __init__(self, frameSaveCount = 30):
+        self.frame_save_count = frameSaveCount
+        self.bounding_boxes = np.array([])
+        
+    def average_dimensions(self):
+        width = 0
+        height = 0
+
+        for bounding_box in self.bounding_boxes:
+            width += bounding_box.get_width()
+            height += bounding_box.get_height()
+        
+        width = width/len(self.bounding_boxes)
+        height = height/len(self.bounding_boxes)
+
+        return width, height
+    
+    def max_bounding_box(self):
+        width = 0
+        height = 0
+
+        for bounding_box in self.bounding_boxes:
+            if width < bounding_box.get_width():
+                width = bounding_box.get_width()
+            if height < bounding_box.get_height():
+                height = bounding_box.get_height()
+        
+        return width, height
+
+    def average_area(self):
+        width, height = self.average_dimensions()
+        return width * height
+
+    def forget(self, frameCount):
+        self.bounding_boxes = np.delete(self.bounding_boxes, np.arange(frameCount))
+
+    def add_bounding_box(self, boundingBox):
+        self.bounding_boxes = np.append(self.bounding_boxes, boundingBox)
+    
+    def full(self):
+        if len(self.bounding_boxes) == self.frame_save_count:
+            return True
+        else:
+            return False
 
 class ImageManipulator:
 
@@ -51,6 +102,12 @@ class ImageManipulator:
     
     def check_movement_detected(self):
         return self.movement_detected
+    
+    def get_bounding_box(self):
+        return self.bounding_box
+    
+    def set_bounding_box(self, boundingBox):
+        self.bounding_box = boundingBox
 
     def convert_gray_filtered(self, source):
         # Converting the image to grayscale.
@@ -61,14 +118,14 @@ class ImageManipulator:
         
     def extract_foreground(self):
         if self.bounding_box is not None:
-            y_coordinates = self.bounding_box.get_y_coordinates()
-            x_coordinates = self.bounding_box.get_x_coordinates()
+            y1, y2 = self.bounding_box.get_y_coordinates()
+            x1, x2 = self.bounding_box.get_x_coordinates()
             foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.close_kernel)
             # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)            
             # foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, kernel_open)   
             # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close) 
             # foreground = cv2.dilate(foreground,kernel_dilate,iterations = 1)
-            extracted_foreground = np.copy(foreground[y_coordinates[0]:y_coordinates[1], x_coordinates[0]:x_coordinates[1]])
+            extracted_foreground = np.copy(foreground[y1:y2, x1:x2])
             extracted_foreground = cv2.resize(extracted_foreground, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
             return extracted_foreground
         else:
@@ -76,15 +133,15 @@ class ImageManipulator:
 
     def extract_edges(self):
         if self.bounding_box is not None:
-            y_coordinates = self.bounding_box.get_y_coordinates()
-            x_coordinates = self.bounding_box.get_x_coordinates()
+            y1, y2 = self.bounding_box.get_y_coordinates()
+            x1, x2 = self.bounding_box.get_x_coordinates()
             # Performs Canny edge detection on filtered frame.
             edges_filtered = cv2.Canny(self.gray, 60, 120)
 
             # Crop off the edges out of the moving area
             cropped_edges = (self.foreground // 255) * edges_filtered
 
-            extracted_edges = np.copy(cropped_edges[y_coordinates[0]:y_coordinates[1], x_coordinates[0]:x_coordinates[1]])
+            extracted_edges = np.copy(cropped_edges[y1:y2, x1:x2])
             extracted_edges = cv2.resize(extracted_edges, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
             return extracted_edges
         else:
@@ -147,6 +204,9 @@ def showImage(source):
 
 def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate = False, checkTemplate = False, sessionName = None):
 
+    FRAME_SAVE_COUNT = 30
+    frame_history = FrameHistory(FRAME_SAVE_COUNT)
+    
     frame_count = 0
 
     if saveTemplate:
@@ -177,13 +237,31 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
         if ret == True:
 
             current_frame = ImageManipulator(frame)
-            extracted_edges = current_frame.extract_edges()
-            extracted_foreground = current_frame.extract_foreground()
 
             if current_frame.check_movement_detected():
+                
+                # if frame_count >= FRAME_SAVE_COUNT:
+                #     # Check for potential obstruction
+                #     average_area = frame_history.average_area()
+                #     current_bounding_box = current_frame.get_bounding_box()
+                #     if current_bounding_box.get_area() < average_area:
+                #         x1, x2 = current_bounding_box.get_x_coordinates()
+                #         y1, y2 = current_bounding_box.get_y_coordinates()
+                #         width, height = frame_history.average_dimensions()
+
+                #         current_bounding_box = BoundingBox(x1=x1, x2=x2 + width, y1=y1, y2=y2 + height, width=width, height=height)
+                #         current_frame.set_bounding_box(current_bounding_box)
+                
+                extracted_edges = current_frame.extract_edges()
+                extracted_foreground = current_frame.extract_foreground()
+
+                # Current frame bounding box gets added to frame history
+                if frame_history.full():
+                    frame_history.forget(1)
+                frame_history.add_bounding_box(current_frame.get_bounding_box())
 
                 if checkTemplate:
-                    
+
                     total_comparison_time_start = timer()
 
                     edge_classification = edgeClassifier.classify(extracted_edges)
@@ -192,18 +270,17 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                     total_comparison_time_end = timer()
                     # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
                     
-                    if (edge_classification == 'falling') & (foreground_classification == 'falling'):
+                    if (edge_classification == 'falling') | (foreground_classification == 'falling'):
                         print("fall")
                     elif (edge_classification == 'upright') & (foreground_classification == 'upright'):
                         print("upright")
-                    elif (edge_classification == 'sitting') & (foreground_classification == 'sitting'):
+                    elif (edge_classification == 'sitting') | (foreground_classification == 'sitting'):
                         print("sitting")
                     elif (edge_classification == 'lying') & (foreground_classification == 'lying'):
                         print("lying")
                     elif (edge_classification == 'unrecognized') & (foreground_classification == 'unrecognized'):
                         print("unrecognized object")
                     
-
                 if saveTemplate:
 
                     save_path_foreground_template = f"./templates/cropped_templates/foreground/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
@@ -211,8 +288,6 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                     
                     cv2.imwrite(save_path_foreground_template, extracted_foreground)
                     cv2.imwrite(save_path_edge_template, extracted_edges)
-                    
-                    frame_count += 1
             
             # Display the resulting frame
             current_frame.display_cv()
@@ -234,13 +309,15 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                 checkTemplate = not checkTemplate
                 print(f'checkTemplate: {checkTemplate}')
 
+            frame_count += 1
+
         # Break the loop
         else: 
             break
 
-    # When everything done, release the video capture object
+    # Release the video capture object
     cap.release()
-    # Closes all the frames
+
     cv2.destroyAllWindows()
 
 def imagePathToByteString(path):
