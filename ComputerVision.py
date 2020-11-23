@@ -107,7 +107,7 @@ class ComputerVision:
         # Smoothing without removing edges.
         #gray_filtered = cv2.bilateralFilter(gray, 10, 100, 100)
         gray_filtered = cv2.GaussianBlur(gray, (21, 21), 0)
-        cv2.imshow('gray_filtered', gray_filtered)
+        #cv2.imshow('gray_filtered', gray_filtered)
         return gray_filtered
         
     def extract_foreground(self):
@@ -147,7 +147,7 @@ class ComputerVision:
         foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.bounding_box_kernel, iterations=3)
         #bounding_thresh = cv2.adaptiveThreshold(foreground, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 199, 5)
         bounding_ret, bounding_thresh = cv2.threshold(foreground, 91, 255, cv2.THRESH_BINARY)
-        cv2.imshow("Focus Movement", bounding_thresh)
+        #cv2.imshow("Focus Movement", bounding_thresh)
         contours = cv2.findContours(bounding_thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
         if len(contours) != 0:
@@ -183,7 +183,7 @@ class ComputerVision:
         if self.bounding_box is not None:
             self.draw_bounding_box(self.detection_frame)
         cv2.imshow("Detection Frame", self.detection_frame)
-        cv2.imshow("fgmask", self.foreground)
+        #cv2.imshow("fgmask", self.foreground)
         #cv2.imshow("bounding box", self.bounding_box)
         
 def showImage(source):
@@ -208,7 +208,6 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
 
     if videoPath is not None:
         cap = cv2.VideoCapture(videoPath)
-
     else:
         cap = cv2.VideoCapture(cv2.CAP_DSHOW)
     
@@ -248,7 +247,7 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                             foreground_classification = foregroundClassifier.classify(extracted_foreground)
                             
                             total_comparison_time_end = timer()
-                            # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
+                            print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
                             
                             if (edge_classification == 'falling') & (foreground_classification == 'falling'):
                                 print("fall")
