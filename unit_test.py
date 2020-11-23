@@ -47,49 +47,42 @@ class TestFallCasesHelper:
 
 class TestFallCases(unittest.TestCase):
     def test0_5_female(self):
-        # Video file for 0-5 feet
         test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-0-5-1.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
 
     def test0_5_foreward_fall(self):
-        # Video file for 5-10 feet
         test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-0-5-2.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
     
     def test0_5_backward_fall(self):
-        # Video file for 10-15 feet
         test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-0-5-3.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
     
     def test5_10_forewards(self):
-        #Video file for 15-20 feet
         test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-5-10-1.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
 
     def test5_10_backwards(self):
-        #Video file for 15-20 feet
         test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-5-10-2.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
     
     def test15_20(self):
-        #Video file for 20-25 feet
         test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-15-20-1.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
 
     def test15_20(self):
-        #Video file for 20-25 feet
         test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-15-20-2.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
