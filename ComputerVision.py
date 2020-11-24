@@ -153,6 +153,8 @@ class ImageManipulator:
         self.gray = self.convert_gray_filtered(self.source)
         self.foreground = self.fgbg.apply(self.gray, learningRate = 0.02)
         self.bounding_box = self.focus_movement(self.source)
+        self.close_kernel = self.get_dynamic_kernel_size()
+
         if self.bounding_box is not None:
             self.movement_detected = True
         else:
@@ -166,6 +168,60 @@ class ImageManipulator:
     
     def set_bounding_box(self, boundingBox):
         self.bounding_box = boundingBox
+
+    def get_dynamic_kernel_size(self):
+        frame = self.detection_frame
+        bounding_box = self.bounding_box
+        font = cv2.FONT_HERSHEY_COMPLEX
+        fall = False
+        global kernelSize
+
+        if (bounding_box is not None):
+            w = bounding_box.get_width()
+            h = bounding_box.get_height()
+            x_coordinates = bounding_box.get_x_coordinates()
+            y_coordinates = bounding_box.get_x_coordinates()
+
+            # Find Distance by Subject's Width Relative to Camera
+            if(w >= 250):
+                distance = 0
+                kernelSize = 30
+                cv2.putText(frame, "Too Close", (w,h), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
+            if(w < 250 and w >= 120):
+                distance = 5
+                fall = False
+                kernelSize = 25
+                cv2.putText(frame, "0-5 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 120 and w >= 100):
+                distance = 10
+                fall = False
+                kernelSize = 20
+                cv2.putText(frame, "5-10 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 100 and w >= 60):
+                distance = 15
+                fall = False
+                kernelSize = 15
+                cv2.putText(frame, "10-15 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 60 and w >= 40):
+                distance = 20
+                fall = False
+                kernelSize = 10
+                cv2.putText(frame, "15-20 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 40 and w >= 20):
+                distance = 25
+                fall = False
+                kernelSize = 5
+                cv2.putText(frame, "20-25 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+            if(w < 20):
+                distance = 30
+                fall = False
+                kernelSize = 10
+                cv2.putText(frame, "25 FT+", (w,h), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
+            if(fall == True):
+                print("Fall Detected!")
+            self.detection_frame = frame
+
+            return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernelSize, kernelSize))
 
     def convert_gray_filtered(self, source):
         # Converting the image to grayscale.
