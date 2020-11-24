@@ -121,12 +121,18 @@ class FrameHistory:
     def average_area(self):
         width, height = self.average_dimensions()
         return width * height
+    
+    def add_bounding_box(self, boundingBox):
+        self.bounding_boxes = np.append(self.bounding_boxes, boundingBox)
 
     def forget_bounding_box(self, frameCount):
         self.bounding_boxes = np.delete(self.bounding_boxes, np.arange(frameCount))
 
-    def add_bounding_box(self, boundingBox):
-        self.bounding_boxes = np.append(self.bounding_boxes, boundingBox)
+    def bounding_box_full(self):
+        if len(self.bounding_boxes) == self.bounding_box_save_count:
+            return True
+        else:
+            return False
     
     def add_frame_info(self, frameInfo):
         self.frame_classifications = np.append(self.frame_classifications, frameInfo)
@@ -140,12 +146,22 @@ class FrameHistory:
         else:
             return False
     
-    def bounding_box_full(self):
-        if len(self.bounding_boxes) == self.bounding_box_save_count:
+    def majority_falling(self):
+
+        fall_classifications = 0
+        total_classifications = 0
+
+        for frame in self.frame_classifications:
+            if frame.edge_classification == 'falling':
+                fall_classifications += 1
+            if frame.foreground_classification == 'falling':
+                fall_classifications +=1
+        
+        if fall_classifications > (total_classifications/2):
             return True
         else:
             return False
-
+    
 class ImageManipulator:
 
     fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
@@ -213,7 +229,7 @@ class ImageManipulator:
         return gray_filtered
         
     def extract_foreground(self):
-        if self.bounding_box is not None:
+        if self.bounding_box is not None and self.bounding_box.get_area() > 0:
             y1, y2 = self.bounding_box.get_y_coordinates()
             x1, x2 = self.bounding_box.get_x_coordinates()
             foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.close_kernel)
@@ -224,7 +240,7 @@ class ImageManipulator:
             return None
 
     def extract_edges(self):
-        if self.bounding_box is not None:
+        if self.bounding_box is not None and self.bounding_box.get_area() > 0:
             y1, y2 = self.bounding_box.get_y_coordinates()
             x1, x2 = self.bounding_box.get_x_coordinates()
 
@@ -298,8 +314,9 @@ def showImage(source):
 
 def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate = False, checkTemplate = False, sessionName = None):
 
-    FRAME_SAVE_COUNT = 5
-    frame_history = FrameHistory(FRAME_SAVE_COUNT)
+    BOUNDING_BOX_COUNT = 5
+    FRAME_INFO_COUNT = 5
+    frame_history = FrameHistory(boundingBoxSaveCount=BOUNDING_BOX_COUNT, frameInfoSaveCount=FRAME_INFO_COUNT)
     
     frame_count = 0
 
@@ -359,22 +376,25 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                         edge_classification = edgeClassifier.classify(extracted_edges)
                         foreground_classification = foregroundClassifier.classify(extracted_foreground)
                         
-                        if (edge_classification == 'falling') or (foreground_classification == 'falling'):
-                            print("fall")
-                        elif (edge_classification == 'upright') or (foreground_classification == 'upright'):
-                            print("upright")
-                        elif (edge_classification == 'sitting') or (foreground_classification == 'sitting'):
-                            print("sitting")
-                        elif (edge_classification == 'lying') or (foreground_classification == 'lying'):
-                            print("lying")
-                        elif (edge_classification == 'unrecognized') or (foreground_classification == 'unrecognized'):
-                            print("unrecognized object")
+                        # if (edge_classification == 'falling') or (foreground_classification == 'falling'):
+                        #     print("fall")
+                        # elif (edge_classification == 'upright') or (foreground_classification == 'upright'):
+                        #     print("upright")
+                        # elif (edge_classification == 'sitting') or (foreground_classification == 'sitting'):
+                        #     print("sitting")
+                        # elif (edge_classification == 'lying') or (foreground_classification == 'lying'):
+                        #     print("lying")
+                        # elif (edge_classification == 'unrecognized') or (foreground_classification == 'unrecognized'):
+                        #     print("unrecognized object")
                         
                         current_frame_info = FrameInfo(edgeClassification=edge_classification, foregroundClassification=foreground_classification)
 
                         if frame_history.frame_info_full():
                             frame_history.forget_frame_info(1)
                         frame_history.add_frame_info(current_frame_info)
+
+                        if frame_history.majority_falling():
+                            print("Fall detected.")
                         
                     if saveTemplate:
 
