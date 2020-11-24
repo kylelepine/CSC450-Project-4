@@ -104,11 +104,11 @@ Distributed under the MIT License. See `LICENSE` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Logan Kilfoy - (Kilfoy0216@live.missouristate.edu) 
-Mason Sanborn - (sa99@live.missouristate.edu)
-Logan Koch - (koch170@live.missouristate.edu)
-Gavin Burris - (gbb123@live.missouristate.edu)
-Kyle Lepine - (kml2008@live.missouristate.edu)
+[Logan Kilfoy](Kilfoy0216@live.missouristate.edu)
+[Mason Sanborn](sa99@live.missouristate.edu)
+[Logan Koch](koch170@live.missouristate.edu)
+[Gavin Burris](gbb123@live.missouristate.edu)
+[Kyle Lepine](kml2008@live.missouristate.edu)
 
 
 Project Link: [https://github.com/kylelepine/CSC450-Project-4](https://github.com/kylelepine/CSC450-Project-4)
