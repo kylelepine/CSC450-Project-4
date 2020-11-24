@@ -67,8 +67,8 @@ class KNeighborsClassifier:
 
         largest_vote = max(classifiers.values())
 
-        if largest_vote < .0001:
-            classification = "Unrecognized"
+        if largest_vote < .00005:
+            classification = "unrecognized"
         else:
             classification = max(classifiers, key = classifiers.get)
         

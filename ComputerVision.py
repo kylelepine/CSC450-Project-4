@@ -348,7 +348,7 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
         if ret == True:
 
             current_frame = ImageManipulator(frame)
-            print(f"frame_count: {frame_count}")
+            #print(f"frame_count: {frame_count}")
 
             if current_frame.check_movement_detected():
 
@@ -376,25 +376,25 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                         edge_classification = edgeClassifier.classify(extracted_edges)
                         foreground_classification = foregroundClassifier.classify(extracted_foreground)
                         
-                        # if (edge_classification == 'falling') or (foreground_classification == 'falling'):
-                        #     print("fall")
-                        # elif (edge_classification == 'upright') or (foreground_classification == 'upright'):
-                        #     print("upright")
-                        # elif (edge_classification == 'sitting') or (foreground_classification == 'sitting'):
-                        #     print("sitting")
-                        # elif (edge_classification == 'lying') or (foreground_classification == 'lying'):
-                        #     print("lying")
-                        # elif (edge_classification == 'unrecognized') or (foreground_classification == 'unrecognized'):
-                        #     print("unrecognized object")
+                        if (edge_classification == 'falling') or (foreground_classification == 'falling'):
+                            print("fall")
+                        elif (edge_classification == 'upright') or (foreground_classification == 'upright'):
+                            print("upright")
+                        elif (edge_classification == 'sitting') or (foreground_classification == 'sitting'):
+                            print("sitting")
+                        elif (edge_classification == 'lying') or (foreground_classification == 'lying'):
+                            print("lying")
+                        elif (edge_classification == 'unrecognized') or (foreground_classification == 'unrecognized'):
+                            print("unrecognized object")
                         
-                        current_frame_info = FrameInfo(edgeClassification=edge_classification, foregroundClassification=foreground_classification)
+                        #current_frame_info = FrameInfo(edgeClassification=edge_classification, foregroundClassification=foreground_classification)
 
-                        if frame_history.frame_info_full():
-                            frame_history.forget_frame_info(1)
-                        frame_history.add_frame_info(current_frame_info)
+                        #if frame_history.frame_info_full():
+                        #    frame_history.forget_frame_info(1)
+                        #frame_history.add_frame_info(current_frame_info)
 
-                        if frame_history.majority_falling():
-                            print("Fall detected.")
+                        #if frame_history.majority_falling():
+                        #    print("Fall detected.")
                         
                     if saveTemplate:
 
