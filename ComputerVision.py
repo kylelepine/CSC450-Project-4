@@ -47,37 +47,36 @@ class BoundingBox:
 
         self.width = width
 
-        # print(f"x1:{self.x1}")
         self.x1 = x_center - (width//2)
-        # print(f"x1:{self.x1}")
         if self.x1 < 0 or self.x1 > SCREEN_WIDTH: self.x1 = 0
-        # print(f"x1:{self.x1}")
 
-        # print(f"x2:{self.x2}")
         self.x2 = x_center + (width//2)
-        # print(f"x2:{self.x2}")
         if self.x2 < 0 or self.x2 > SCREEN_WIDTH: self.x2 = SCREEN_WIDTH
-        # print(f"x2:{self.x2}")
         
         self.height = height
 
-        # print(f"y1:{self.y1}")
         self.y1 = y_center - (height//2)
-        # print(f"y1:{self.y1}")
         if self.y1 < 0 or self.y1 > SCREEN_HEIGHT: self.y1 = 0
-        # print(f"y1:{self.y1}")
 
-        # print(f"y2:{self.y2}")
         self.y2 = y_center + (height//2)
-        # print(f"y2:{self.y2}")
         if self.y2 < 0 or self.y2 > SCREEN_HEIGHT: self.y2 = SCREEN_HEIGHT
-        # print(f"y2:{self.y2}")
+
+class FrameInfo:
+
+    def __init__(self, edgeClassification, foregroundClassification):
+        self.edge_classification = edgeClassification
+        self.foreground_classification = foregroundClassification
+    
 
 class FrameHistory:
 
-    def __init__(self, frameSaveCount = 10):
-        self.frame_save_count = frameSaveCount
+    def __init__(self, boundingBoxSaveCount = 10, frameInfoSaveCount = 10):
+
+        self.bounding_box_save_count = boundingBoxSaveCount
         self.bounding_boxes = np.array([])
+
+        self.frame_info_save_count = frameInfoSaveCount
+        self.frame_classifications = np.array([])
         
     def average_dimensions(self):
         width = 0
@@ -98,8 +97,6 @@ class FrameHistory:
         continuous_decrease = True
         
         for bounding_box in self.bounding_boxes:
-            # print(f'previous_area: {previous_area}')
-            # print(f'area: {bounding_box.get_area()}')
             area = bounding_box.get_area()
 
             if area > previous_area:
@@ -125,14 +122,26 @@ class FrameHistory:
         width, height = self.average_dimensions()
         return width * height
 
-    def forget(self, frameCount):
+    def forget_bounding_box(self, frameCount):
         self.bounding_boxes = np.delete(self.bounding_boxes, np.arange(frameCount))
 
     def add_bounding_box(self, boundingBox):
         self.bounding_boxes = np.append(self.bounding_boxes, boundingBox)
     
-    def full(self):
-        if len(self.bounding_boxes) == self.frame_save_count:
+    def add_frame_info(self, frameInfo):
+        self.frame_classifications = np.append(self.frame_classifications, frameInfo)
+
+    def forget_frame_info(self, frameCount):
+        self.frame_classifications = np.delete(self.frame_classifications, np.arange(frameCount))
+    
+    def frame_info_full(self):
+        if len(self.frame_classifications) == self.frame_info_save_count:
+            return True
+        else:
+            return False
+    
+    def bounding_box_full(self):
+        if len(self.bounding_boxes) == self.bounding_box_save_count:
             return True
         else:
             return False
@@ -147,9 +156,7 @@ class ImageManipulator:
         self.detection_frame = self.source.copy()
         self.gray = self.convert_gray_filtered(self.source)
         self.foreground = self.fgbg.apply(self.gray, learningRate = 0.02)
-
         
-        # self.bounding_box_kernel = self.get_dynamic_kernel_size()
         self.bounding_box = self.focus_movement(self.source)
         if self.bounding_box is not None:
             self.movement_detected = True
@@ -168,42 +175,33 @@ class ImageManipulator:
         self.bounding_box = boundingBox
 
     def get_dynamic_kernel_size(self):
-        # font = cv2.FONT_HERSHEY_COMPLEX
         kernel_size = 30
 
         if (self.movement_detected):
 
             width = self.bounding_box.get_width()
-            # height = self.bounding_box.get_height()
 
             # Find Distance by Subject's Width Relative to Camera
             if(width >= 250):
                 kernel_size = 30
-                # cv2.putText(self.detection_frame, "Too Close", (width, height), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
 
             if(width < 250 and width >= 120):
                 kernel_size = 25
-                # cv2.putText(self.detection_frame, "0-5 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
 
             if(width < 120 and width >= 100):
                 kernel_size = 20
-                # cv2.putText(self.detection_frame, "5-10 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
 
             if(width < 100 and width >= 60):
                 kernel_size = 15
-                # cv2.putText(self.detection_frame, "10-15 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
 
             if(width < 60 and width >= 40):
                 kernel_size = 10
-                # cv2.putText(self.detection_frame, "15-20 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
 
             if(width < 40 and width >= 20):
                 kernel_size = 5
-                # cv2.putText(self.detection_frame, "20-25 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
 
             if(width < 20):
                 kernel_size = 10
-                # cv2.putText(self.detection_frame, "25 FT+", (width, height), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
 
         return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
 
@@ -338,8 +336,8 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
             if current_frame.check_movement_detected():
 
                 # Current frame bounding box gets added to frame history
-                if frame_history.full():
-                    frame_history.forget(1)
+                if frame_history.bounding_box_full():
+                    frame_history.forget_bounding_box(1)
                 frame_history.add_bounding_box(current_frame.get_bounding_box())
 
                 if not frame_history.check_continuous_decrease():
@@ -358,13 +356,8 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
 
                     if checkTemplate:
 
-                        # total_comparison_time_start = timer()
-
                         edge_classification = edgeClassifier.classify(extracted_edges)
                         foreground_classification = foregroundClassifier.classify(extracted_foreground)
-                        
-                        # total_comparison_time_end = timer()
-                        # print(f"Total comparison time {total_comparison_time_end - total_comparison_time_start} seconds.")
                         
                         if (edge_classification == 'falling') or (foreground_classification == 'falling'):
                             print("fall")
@@ -376,6 +369,12 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                             print("lying")
                         elif (edge_classification == 'unrecognized') or (foreground_classification == 'unrecognized'):
                             print("unrecognized object")
+                        
+                        current_frame_info = FrameInfo(edgeClassification=edge_classification, foregroundClassification=foreground_classification)
+
+                        if frame_history.frame_info_full():
+                            frame_history.forget_frame_info(1)
+                        frame_history.add_frame_info(current_frame_info)
                         
                     if saveTemplate:
 

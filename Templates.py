@@ -126,7 +126,6 @@ class TemplateDatabase:
             FROM template
             ''', )
             rows = curr.fetchall()
-            # print(rows)
             id_list = []
             for row in rows:
                 id_list.append(str(row[0]))
