@@ -42,6 +42,7 @@ class BoundingBox:
 
         return x_center, y_center
     
+    # Adjusts bounding box size to maintain average.
     def change_dimensions(self, width, height):
         x_center, y_center = self.get_center()
 
@@ -77,7 +78,8 @@ class FrameHistory:
 
         self.frame_info_save_count = frameInfoSaveCount
         self.frame_classifications = np.array([])
-        
+
+    # Averages the size of the bounding box array.    
     def average_dimensions(self):
         width = 0
         height = 0
@@ -91,6 +93,7 @@ class FrameHistory:
 
         return width, height
     
+    # Checks to see if the bounding box has increased recently.
     def check_continuous_decrease(self):
 
         previous_area = 640 * 480
@@ -106,6 +109,7 @@ class FrameHistory:
 
         return continuous_decrease
     
+    # Finds the greatest bounding box within the array.
     def max_bounding_box(self):
         width = 0
         height = 0
@@ -167,6 +171,7 @@ class ImageManipulator:
     fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
     bounding_box_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
 
+    # Initialize default values, makes copy of current frame.
     def __init__(self, frame):
         self.source = frame
         self.detection_frame = self.source.copy()
@@ -190,6 +195,7 @@ class ImageManipulator:
     def set_bounding_box(self, boundingBox):
         self.bounding_box = boundingBox
 
+    # Adjusts the kernel size dynamically based on a distance calculation.
     def get_dynamic_kernel_size(self):
         kernel_size = 30
 
@@ -197,7 +203,7 @@ class ImageManipulator:
 
             width = self.bounding_box.get_width()
 
-            # Find Distance by Subject's Width Relative to Camera
+            # Find Distance by Subject's Width Relative to Camera.
             if(width >= 250):
                 kernel_size = 30
 
@@ -228,8 +234,9 @@ class ImageManipulator:
         gray_filtered = cv2.bilateralFilter(gray, 7, 75, 75)
         return gray_filtered
         
+    # Splices the foreground image and returns it.
     def extract_foreground(self):
-        if self.bounding_box is not None and self.bounding_box.get_area() > 0:
+        if self.bounding_box is not None and self.bounding_box.get_area() > 1000:
             y1, y2 = self.bounding_box.get_y_coordinates()
             x1, x2 = self.bounding_box.get_x_coordinates()
             foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.close_kernel)
@@ -239,8 +246,9 @@ class ImageManipulator:
         else:
             return None
 
+    # Splices the edge image and returns it.
     def extract_edges(self):
-        if self.bounding_box is not None and self.bounding_box.get_area() > 0:
+        if self.bounding_box is not None and self.bounding_box.get_area() > 1000:
             y1, y2 = self.bounding_box.get_y_coordinates()
             x1, x2 = self.bounding_box.get_x_coordinates()
 
@@ -256,6 +264,7 @@ class ImageManipulator:
         else:
             return None
 
+    # Creates the bounding boxes and finds the best one.
     def focus_movement(self, source):
 
         bounding_box = None
@@ -274,6 +283,7 @@ class ImageManipulator:
 
         return bounding_box
 
+    # Draws the best bounding box to the video feed.
     def draw_bounding_box(self, source, minArea=500, bufferSpace=40):
 
         width = self.bounding_box.get_width()
@@ -293,12 +303,13 @@ class ImageManipulator:
                 
                 cv2.rectangle(source, (x_coordinates[0], y_coordinates[0]), (x_coordinates[1], y_coordinates[1]), (0, 255, 0), 2)
     
+    #Display the live video feed and/or foreground frame.
     def display_cv(self, showBox = True):
         if self.bounding_box is not None and showBox:
             self.draw_bounding_box(self.detection_frame)
 
         cv2.imshow("Detection Frame", self.detection_frame)
-        cv2.imshow('Foreground Frame', self.foreground)
+        #cv2.imshow('Foreground Frame', self.foreground)
         
 def showImage(source):
 
@@ -371,6 +382,7 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                     extracted_edges = current_frame.extract_edges()
                     extracted_foreground = current_frame.extract_foreground()
 
+                    # Displays to the console which classification, if any, is detected each frame.
                     if checkTemplate:
 
                         edge_classification = edgeClassifier.classify(extracted_edges)
@@ -387,6 +399,7 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                         elif (edge_classification == 'unrecognized') or (foreground_classification == 'unrecognized'):
                             print("unrecognized object")
                         
+                        #IN PROGRESS
                         #current_frame_info = FrameInfo(edgeClassification=edge_classification, foregroundClassification=foreground_classification)
 
                         #if frame_history.frame_info_full():

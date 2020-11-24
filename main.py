@@ -8,7 +8,7 @@ import ComputerVision
 def main():
     print('Starting FDSystem')
 
-    # Database credentials 
+    # Database credentials. 
     LOCAL_DATABASE_NAME = 'CSC-450_FDS'
     LOCAL_DATABASE_PASSWORD = 'Pd9;$chsi9-$nc'
 

@@ -37,7 +37,7 @@ class TemplateDatabase:
             print(error)
       
     def disconnect(self):
-        # closes communcation with PostgreSQL server
+        # Closes communcation with PostgreSQL server
         print("Disconnecting...")
         if self.conn is not None:
             self.conn.close()
@@ -54,6 +54,7 @@ class TemplateDatabase:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
+    # Allows the user to add templates to the database.
     def add_template(self, templateType, templateCharateristic, imageName, imageByteArray):
         try:
             curr = self.conn.cursor()
@@ -68,7 +69,8 @@ class TemplateDatabase:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
         curr.close()
-        
+    
+    # Allows the user to remove templates from the database.
     def delete_template(self, templateId):
         try:
             curr = self.conn.cursor()
@@ -82,6 +84,7 @@ class TemplateDatabase:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
+    # Find a template by id in the database.
     def access_image_by_id(self, templateId):
         try:
             curr = self.conn.cursor()
@@ -96,7 +99,8 @@ class TemplateDatabase:
             return template
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
-        
+
+    # Allows the user to access all images.   
     def access_images(self, templateType, templateCharacteristic):
         try:
             curr = self.conn.cursor()
@@ -118,6 +122,7 @@ class TemplateDatabase:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
     
+    # Returns a list of all available ids.
     def list_of_all_IDs(self):
         try:
             curr = self.conn.cursor()
@@ -134,6 +139,7 @@ class TemplateDatabase:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
+    # Loads the templates from the database.
     def load_templates(self, templates):
         for template_characteristic in templates.keys():
             for template_type in templates[template_characteristic].keys():
@@ -143,6 +149,7 @@ class TemplateDatabase:
                     
         return templates
 
+    # Mass uploads all the local templates.
     def upload_all_local_templates(self):
         for template_characteristic in self.template_characteristics:
             for template_type in self.template_types:
@@ -153,7 +160,7 @@ class TemplateDatabase:
                         image = ComputerVision.imagePathToByteArray(file_path)
                         self.add_template(template_type, template_characteristic, filename, image)
 
-# loads templates from files saved on local machine. (NOTE: Folders must be premade and organized to use)
+# Loads templates from files saved on local machine. (NOTE: Folders must be premade and organized to use)
 def loadTemplatesLocally():
     local_templates = {"edge": {}, "foreground": {}}
 
