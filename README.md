@@ -104,7 +104,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 <!-- CONTACT -->
 ## Contact
 
-* Logan Kilfoy -Kilfoy0216@live.missouristate.edu
+* Logan Kilfoy - Kilfoy0216@live.missouristate.edu
 * Mason Sanborn - sa99@live.missouristate.edu
 * Logan Koch - koch170@live.missouristate.edu
 * Gavin Burris - gbb123@live.missouristate.edu
