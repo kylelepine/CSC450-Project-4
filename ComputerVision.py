@@ -140,11 +140,6 @@ class FrameHistory:
 class ImageManipulator:
 
     fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
-    
-    # close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
-    # open_kernel = np.ones((10,10),np.uint8)
-    # dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
-
     bounding_box_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
 
     def __init__(self, frame):
@@ -360,8 +355,6 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                     
                     extracted_edges = current_frame.extract_edges()
                     extracted_foreground = current_frame.extract_foreground()
-
-                
 
                     if checkTemplate:
 

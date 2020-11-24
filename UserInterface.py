@@ -96,7 +96,7 @@ def systemUserInterface(templates, database, foregroundClassifier, edgeClassifie
 
             if database.connected():
                 databaseUserInterface(database)
-                templates = database.loadTemplates()
+                templates = database.load_templates(templates)
 
             else:
                 print("Database not connected.")

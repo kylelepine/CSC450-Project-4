@@ -144,7 +144,7 @@ class TemplateDatabase:
                     
         return templates
 
-    def upload_all_local_templates(self, database):
+    def upload_all_local_templates(self):
         for template_characteristic in self.template_characteristics:
             for template_type in self.template_types:
                 path = f"./templates/cropped_templates/{template_characteristic}/{template_type}/"
@@ -152,7 +152,7 @@ class TemplateDatabase:
                     for filename in filenames:
                         file_path = f"{path}{filename}"
                         image = ComputerVision.imagePathToByteArray(file_path)
-                        database.add_template(template_type, template_characteristic, filename, image)
+                        self.add_template(template_type, template_characteristic, filename, image)
 
 # loads templates from files saved on local machine. (NOTE: Folders must be premade and organized to use)
 def loadTemplatesLocally():

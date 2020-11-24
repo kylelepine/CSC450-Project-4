@@ -5,14 +5,12 @@ import Templates
 import HumanStateClassifier
 import ComputerVision
 
-
-
 def main():
     print('Starting FDSystem')
 
     # Database credentials 
     LOCAL_DATABASE_NAME = 'CSC-450_FDS'
-    LOCAL_DATABASE_PASSWORD = 'Apcid28;6jdn'
+    LOCAL_DATABASE_PASSWORD = 'Pd9;$chsi9-$nc'
 
     database = Templates.TemplateDatabase(LOCAL_DATABASE_NAME, LOCAL_DATABASE_PASSWORD)
     database.connect()
