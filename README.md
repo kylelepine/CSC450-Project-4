@@ -54,7 +54,7 @@ To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
-This software runs on pyhton. Make sure you have pyhton installed on your machine.
+This software runs on python. Make sure you have pyhton installed on your machine.
 
 ### Installation
 
