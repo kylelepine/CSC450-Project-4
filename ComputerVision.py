@@ -141,7 +141,7 @@ class ImageManipulator:
 
     fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
     
-    close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
+    # close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
     # open_kernel = np.ones((10,10),np.uint8)
     # dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
 
@@ -152,13 +152,16 @@ class ImageManipulator:
         self.detection_frame = self.source.copy()
         self.gray = self.convert_gray_filtered(self.source)
         self.foreground = self.fgbg.apply(self.gray, learningRate = 0.02)
-        self.bounding_box = self.focus_movement(self.source)
-        self.close_kernel = self.get_dynamic_kernel_size()
 
+        
+        # self.bounding_box_kernel = self.get_dynamic_kernel_size()
+        self.bounding_box = self.focus_movement(self.source)
         if self.bounding_box is not None:
             self.movement_detected = True
         else:
             self.movement_detected = False
+        
+        self.close_kernel = self.get_dynamic_kernel_size()
     
     def check_movement_detected(self):
         return self.movement_detected
@@ -170,58 +173,44 @@ class ImageManipulator:
         self.bounding_box = boundingBox
 
     def get_dynamic_kernel_size(self):
-        frame = self.detection_frame
-        bounding_box = self.bounding_box
-        font = cv2.FONT_HERSHEY_COMPLEX
-        fall = False
-        global kernelSize
+        # font = cv2.FONT_HERSHEY_COMPLEX
+        kernel_size = 30
 
-        if (bounding_box is not None):
-            w = bounding_box.get_width()
-            h = bounding_box.get_height()
-            x_coordinates = bounding_box.get_x_coordinates()
-            y_coordinates = bounding_box.get_x_coordinates()
+        if (self.movement_detected):
+
+            width = self.bounding_box.get_width()
+            # height = self.bounding_box.get_height()
 
             # Find Distance by Subject's Width Relative to Camera
-            if(w >= 250):
-                distance = 0
-                kernelSize = 30
-                cv2.putText(frame, "Too Close", (w,h), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
-            if(w < 250 and w >= 120):
-                distance = 5
-                fall = False
-                kernelSize = 25
-                cv2.putText(frame, "0-5 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
-            if(w < 120 and w >= 100):
-                distance = 10
-                fall = False
-                kernelSize = 20
-                cv2.putText(frame, "5-10 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
-            if(w < 100 and w >= 60):
-                distance = 15
-                fall = False
-                kernelSize = 15
-                cv2.putText(frame, "10-15 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
-            if(w < 60 and w >= 40):
-                distance = 20
-                fall = False
-                kernelSize = 10
-                cv2.putText(frame, "15-20 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
-            if(w < 40 and w >= 20):
-                distance = 25
-                fall = False
-                kernelSize = 5
-                cv2.putText(frame, "20-25 FT", (w,h), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
-            if(w < 20):
-                distance = 30
-                fall = False
-                kernelSize = 10
-                cv2.putText(frame, "25 FT+", (w,h), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
-            if(fall == True):
-                print("Fall Detected!")
-            self.detection_frame = frame
+            if(width >= 250):
+                kernel_size = 30
+                # cv2.putText(self.detection_frame, "Too Close", (width, height), font, 0.8, (255,0,0), 2, cv2.LINE_AA)
 
-            return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernelSize, kernelSize))
+            if(width < 250 and width >= 120):
+                kernel_size = 25
+                # cv2.putText(self.detection_frame, "0-5 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+
+            if(width < 120 and width >= 100):
+                kernel_size = 20
+                # cv2.putText(self.detection_frame, "5-10 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+
+            if(width < 100 and width >= 60):
+                kernel_size = 15
+                # cv2.putText(self.detection_frame, "10-15 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+
+            if(width < 60 and width >= 40):
+                kernel_size = 10
+                # cv2.putText(self.detection_frame, "15-20 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+
+            if(width < 40 and width >= 20):
+                kernel_size = 5
+                # cv2.putText(self.detection_frame, "20-25 FT", (width, height), font, 0.8, (0,255,255), 2, cv2.LINE_AA)
+
+            if(width < 20):
+                kernel_size = 10
+                # cv2.putText(self.detection_frame, "25 FT+", (width, height), font, 0.8, (0,0,0), 2, cv2.LINE_AA)
+
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
 
     def convert_gray_filtered(self, source):
         # Converting the image to grayscale.
@@ -235,10 +224,6 @@ class ImageManipulator:
             y1, y2 = self.bounding_box.get_y_coordinates()
             x1, x2 = self.bounding_box.get_x_coordinates()
             foreground = cv2.morphologyEx(self.foreground, cv2.MORPH_CLOSE, self.close_kernel)
-            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close)            
-            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, kernel_open)   
-            # foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel_close) 
-            # foreground = cv2.dilate(foreground,kernel_dilate,iterations = 1)
             extracted_foreground = np.copy(foreground[y1:y2, x1:x2])
             extracted_foreground = cv2.resize(extracted_foreground, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
             return extracted_foreground
