@@ -1,5 +1,5 @@
 import ComputerVision
-import TemplateModifier
+import TemplateViewer
 import Templates
 
 
@@ -9,14 +9,14 @@ def systemUserInterface(templates, database, foregroundClassifier, edgeClassifie
     while True:
 
         print("""
-        Command:(button)              Description:
-        view_video:(1)                Displays available videos in 'fall_samples' with computer vision.
-        view_webcam:(2)               Displays connected webcam with computer vision
-        modify templates:(3)          Allows user to modify templates that exist in the database.
-        compare_template:(4)          Demonstrates comparing a template to a frame.
-        database:(5)                  Access Database UI.
-        load templates from file:(6)  Loads templates from files manually instead of the database. 
-        quit:(q)
+        Command:(button)                      Description:
+        Video:(1)                             Displays available videos in 'fall_samples' with computer vision.
+        Webcam:(2)                            Displays connected webcam with computer vision
+        View Templates:(3)                    Allows user to modify templates that exist in the database.
+        Make Singular Comparison:(4)          Demonstrates comparing a template to a frame.
+        Access Database:(5)                   Access Database UI.
+        Load Templates Locally:(6)            Loads templates from files manually instead of the database. 
+        QUIT(q)
         """)
 
         command = input("Command: ")
@@ -78,8 +78,8 @@ def systemUserInterface(templates, database, foregroundClassifier, edgeClassifie
                                       
         elif command == '3':
 
-            template_modifier = TemplateModifier.TemplateModifier(templates)
-            template_modifier.crop_template()
+            template_modifier = TemplateViewer.TemplateViewer(templates)
+            template_modifier.view_templates()
 
         elif command == '4': 
             

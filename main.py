@@ -1,6 +1,6 @@
 # Modules 
 import UserInterface
-import TemplateModifier
+import TemplateViewer
 import Templates
 import HumanStateClassifier
 import ComputerVision
