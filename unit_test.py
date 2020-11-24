@@ -88,19 +88,17 @@ class TestFallCases(unittest.TestCase):
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
 
-    # def testLowLight(self):
-    #     #Video file for low light
-    #     test_case_helper = TestFallCasesHelper()
-    #     fileName = './fall_samples/fall-06-cam0.mp4'
-    #     fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
-    #     self.assertEqual(fall_detected, True)
+    def testLowLight_15_20(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/fall-lowlight.mp4'
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, True)
     
-    # def testObstructed(self):
-    #     #Video file for obstructed view
-    #     test_case_helper = TestFallCasesHelper()
-    #     fileName = './fall_samples/fall-07-cam0.mp4'
-    #     fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
-    #     self.assertEqual(fall_detected, True)
+    def testObstructed_15_20(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/fall-obstructed.mp4'
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, True)
 
     def testCamera(self):
         test = True
