@@ -119,6 +119,7 @@ class ComputerVision:
             foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, self.close_kernel, iterations=10)
             foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, self.open_kernel, iterations=10)   
             extracted_foreground = np.copy(foreground[y_coordinates[0]:y_coordinates[1], x_coordinates[0]:x_coordinates[1]])
+            cv2.imshow('morph', extracted_foreground)
             extracted_foreground = cv2.resize(extracted_foreground, dsize = (50,75), interpolation=cv2.INTER_CUBIC)
             return extracted_foreground
         else:
@@ -179,11 +180,11 @@ class ComputerVision:
                 
                 cv2.rectangle(source, (x_coordinates[0], y_coordinates[0]), (x_coordinates[1], y_coordinates[1]), (0, 255, 0), 2)
     
-    def display_cv(self):
+    def display_cv(self, displayForeground=False):
         if self.bounding_box is not None:
             self.draw_bounding_box(self.detection_frame)
-        cv2.imshow("Detection Frame", self.detection_frame)
-        #cv2.imshow("fgmask", self.foreground)
+            cv2.imshow("Detection Frame", self.detection_frame)
+            cv2.imshow("fgmask", self.foreground)
         #cv2.imshow("bounding box", self.bounding_box)
         
 def showImage(source):
@@ -198,7 +199,7 @@ def showImage(source):
 
     return cv2.destroyAllWindows()
 
-def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate = False, checkTemplate = False, sessionName = None):
+def display(foregroundClassifier, edgeClassifier, videoPath = None, displayForeground=False, saveTemplate = False, checkTemplate = False, sessionName = None):
 
     frame_count = 0
     fall_detected = False
@@ -264,7 +265,7 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                             frame_count += 1
                     
                     # Display the resulting frame
-                    current_frame.display_cv()
+                    current_frame.display_cv(displayForeground=displayForeground)
 
             # controls
             key = cv2.waitKey(25) & 0xFF

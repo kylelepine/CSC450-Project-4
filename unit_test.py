@@ -7,7 +7,7 @@ import Templates
 import HumanStateClassifier
 
 class TestFallCasesHelper:
-    def displayTestCV(self, local, fileName):
+    def displayTestCV(self, local, fileName, displayForeground=False):
         templates = self.loadTemplates(local=local)
 
         # Classifiers
@@ -18,6 +18,7 @@ class TestFallCasesHelper:
         return ComputerVision.display(foregroundClassifier=foreground_classifier,
                                     edgeClassifier=edge_classifier,
                                     videoPath=fileName,
+                                    displayForeground=displayForeground,
                                     saveTemplate=False,
                                     checkTemplate=True)
 
@@ -100,6 +101,32 @@ class TestFallCases(unittest.TestCase):
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
 
+    def testDetectHuman(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/dogs.mp4'
+        fall_detected = False
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, False)
+
+    def testSittingDown(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/human-sitting-down.mp4'
+        fall_detected = False
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, False)
+
+    def testLyingDown(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/human-lying-down.mp4'
+        fall_detected = False
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, False)
+
+    def testRemoveNonMovingEntites(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/static-with-window.mp4'
+        test_case_helper.displayTestCV(local=True, fileName=fileName, displayForeground=True)
+
     def testCamera(self):
         test = True
         cap = cv2.VideoCapture(0)
@@ -108,14 +135,9 @@ class TestFallCases(unittest.TestCase):
         self.assertEqual(test,True)
     
     def testDBConnection(self):
-        try:
-            self.conn = psycopg2.connect(host = 'localhost', \
-                database = 'CSC-450_FDS', user = 'postgres', \
-                password = 'Apcid28;6jdn')
-            test = True
-        except (Exception, psycopg2.DatabaseError):
-            test = False
-        self.assertEqual(test, True)
+        test_case_helper = TestFallCasesHelper()
+        db_templates = test_case_helper.loadTemplates(local=False)
+        self.assertGreater(len(db_templates), 0)
 
 if __name__ == '__main__':
     unittest.main()
