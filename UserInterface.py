@@ -3,7 +3,7 @@ import TemplateViewer
 import Templates
 
 
-
+# Creates the user interface in the console.
 def systemUserInterface(templates, database, foregroundClassifier, edgeClassifier):
 
     while True:
@@ -96,7 +96,7 @@ def systemUserInterface(templates, database, foregroundClassifier, edgeClassifie
 
             if database.connected():
                 databaseUserInterface(database)
-                templates = database.loadTemplates()
+                templates = database.load_templates(templates)
 
             else:
                 print("Database not connected.")
@@ -110,6 +110,7 @@ def systemUserInterface(templates, database, foregroundClassifier, edgeClassifie
         else:
             print("incorrect command.")
 
+# User Interface functionality relating to the database.
 def databaseUserInterface(database):
 
     database.connect()

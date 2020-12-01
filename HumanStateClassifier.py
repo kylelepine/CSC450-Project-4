@@ -66,10 +66,9 @@ class KNeighborsClassifier:
                 classifiers[neighbor_class] = weighted_vote
 
         largest_vote = max(classifiers.values())
-        # print(largest_vote)
 
-        if largest_vote < .0001:
-            classification = "Unrecognized"
+        if largest_vote < .0003:
+            classification = "unrecognized"
         else:
             classification = max(classifiers, key = classifiers.get)
         
@@ -77,7 +76,8 @@ class KNeighborsClassifier:
         return classification
 
     def euclidean_distance(self, source, target):
-        
-        distance = np.linalg.norm(source - target)
-        
-        return distance
+        if source is not None and target is not None:
+            distance = np.linalg.norm(source - target)
+            return distance
+        else:
+            return 1

@@ -12,6 +12,7 @@ class TemplateViewer:
         self.images_length = len(self.images)
         self.current_image_index = 0
 
+    # UI functionality to view templates.
     def view_templates(self):
 
         self.update_image_list(self.template_characteristic, self.template_type)
