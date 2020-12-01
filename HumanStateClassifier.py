@@ -58,7 +58,6 @@ class KNeighborsClassifier:
             try:
                 weighted_vote = 1.0 / neighbor.distance * -1
             except(ZeroDivisionError) as error:
-                print(error)
                 weighted_vote = 1.0
             if neighbor_class in classifiers:
                 classifiers[neighbor_class] += weighted_vote
@@ -67,7 +66,7 @@ class KNeighborsClassifier:
 
         largest_vote = max(classifiers.values())
 
-        if largest_vote < .0003:
+        if largest_vote < .0008:
             classification = "unrecognized"
         else:
             classification = max(classifiers, key = classifiers.get)

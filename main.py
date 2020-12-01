@@ -30,7 +30,7 @@ def main():
 
     edge_classifier = HumanStateClassifier.KNeighborsClassifier(templates['edge'], k=20)
     foreground_classifier = HumanStateClassifier.KNeighborsClassifier(templates["foreground"], k=20)
-
+    
     UserInterface.systemUserInterface(templates,
                                     database,
                                     edgeClassifier=edge_classifier,

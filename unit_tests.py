@@ -57,21 +57,9 @@ class TestFallCases(unittest.TestCase):
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
     
-    def test0_5_backward_fall(self):
-        test_case_helper = TestFallCasesHelper()
-        fileName = './fall_samples/fall-0-5-3.mp4'
-        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
-        self.assertEqual(fall_detected, True)
-    
     def test5_10_forewards(self):
         test_case_helper = TestFallCasesHelper()
         fileName = './fall_samples/fall-5-10-1.mp4'
-        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
-        self.assertEqual(fall_detected, True)
-
-    def test5_10_backwards(self):
-        test_case_helper = TestFallCasesHelper()
-        fileName = './fall_samples/fall-5-10-2.mp4'
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
     

@@ -309,7 +309,7 @@ class ImageManipulator:
             self.draw_bounding_box(self.detection_frame)
 
         cv2.imshow("Detection Frame", self.detection_frame)
-        #cv2.imshow('Foreground Frame', self.foreground)
+        cv2.imshow('Foreground Frame', self.foreground)
         
 def showImage(source):
 
@@ -328,7 +328,8 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
     BOUNDING_BOX_COUNT = 5
     FRAME_INFO_COUNT = 5
     frame_history = FrameHistory(boundingBoxSaveCount=BOUNDING_BOX_COUNT, frameInfoSaveCount=FRAME_INFO_COUNT)
-    
+    fall_detected = False
+    fall_counter = 0
     frame_count = 0
 
     if saveTemplate:
@@ -390,6 +391,7 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                         
                         if (edge_classification == 'falling') or (foreground_classification == 'falling'):
                             print("fall")
+                            fall_counter = fall_counter + 1
                         elif (edge_classification == 'upright') or (foreground_classification == 'upright'):
                             print("upright")
                         elif (edge_classification == 'sitting') or (foreground_classification == 'sitting'):
@@ -450,6 +452,9 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
     cap.release()
 
     cv2.destroyAllWindows()
+    if (fall_counter > 3):
+        fall_detected = True
+    return fall_detected
 
 def imagePathToByteString(path):
     with open(path, 'rb') as f:
