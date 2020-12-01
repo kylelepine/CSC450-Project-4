@@ -99,6 +99,32 @@ class TestFallCases(unittest.TestCase):
         fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
         self.assertEqual(fall_detected, True)
 
+    def testDetectHuman(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/dogs.mp4'
+        fall_detected = False
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, False)
+
+    def testSittingDown(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/human-sitting-down.mp4'
+        fall_detected = False
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, False)
+
+    def testLyingDown(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/human-lying-down.mp4'
+        fall_detected = False
+        fall_detected = test_case_helper.displayTestCV(local=True, fileName=fileName)
+        self.assertEqual(fall_detected, False)
+
+    def testRemoveNonMovingEntites(self):
+        test_case_helper = TestFallCasesHelper()
+        fileName = './fall_samples/static-with-window.mp4'
+        test_case_helper.displayTestCV(local=True, fileName=fileName)
+    
     def testCamera(self):
         test = True
         cap = cv2.VideoCapture(0)
