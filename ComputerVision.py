@@ -462,16 +462,6 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
                         elif (edge_classification == 'unrecognized') or (foreground_classification == 'unrecognized'):
                             print("unrecognized object")
                         
-                        #IN PROGRESS
-                        #current_frame_info = FrameInfo(edgeClassification=edge_classification, foregroundClassification=foreground_classification)
-
-                        #if frame_history.frame_info_full():
-                        #    frame_history.forget_frame_info(1)
-                        #frame_history.add_frame_info(current_frame_info)
-
-                        #if frame_history.majority_falling():
-                        #    print("Fall detected.")
-                        
                     if saveTemplate:
 
                         save_path_foreground_template = f"./templates/cropped_templates/foreground/{sessionName if videoPath is None else videoPath[15:-4]}_{str(frame_count)}.png"
