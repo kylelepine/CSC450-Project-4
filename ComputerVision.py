@@ -422,7 +422,6 @@ def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate
         if ret == True:
 
             current_frame = ImageManipulator(frame)
-            #print(f"frame_count: {frame_count}")
 
             if current_frame.check_movement_detected():
 
