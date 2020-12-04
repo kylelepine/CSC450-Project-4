@@ -62,22 +62,10 @@ This software runs on python. Make sure you have pyhton installed on your machin
    ```sh
    git clone https://github.com/kylelepine/CSC450-Project-4.git
    ```
-2. Install CV packages
+2. Install Packages 
    ```sh
-   pip install opencv-python
+   pipenv install
    ```
-3. Install psycopg2 packages
-    ```
-    pip install psycopg2
-    ```
-4. Install numpy packages
-    ```
-    pip install numpy
-    ```
-5. Install imutils packages
-    ```
-    pip install imutils
-    ```
 
 
 
