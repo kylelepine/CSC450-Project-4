@@ -62,12 +62,16 @@ This software runs on python. Make sure you have pyhton installed on your machin
    ```sh
    git clone https://github.com/kylelepine/CSC450-Project-4.git
    ```
-2. Install Packages 
+2. Install Package Manager 
+   ```sh
+   cd intoProjectFolder
+   pip install pipenv
+   ```
+   
+3. Install Packages 
    ```sh
    pipenv install
    ```
-
-
 
 <!-- CONTRIBUTING -->
 ## Contributing
