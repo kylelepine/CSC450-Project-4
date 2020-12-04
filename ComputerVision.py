@@ -350,12 +350,12 @@ class ImageManipulator:
                 
                 cv2.rectangle(source, (x_coordinates[0], y_coordinates[0]), (x_coordinates[1], y_coordinates[1]), (0, 255, 0), 2)
     
-    #Display the live video feed and/or foreground frame.
+    # Display the live video feed and/or foreground frame.
     def display_cv(self, showBox = True):
         if self.bounding_box is not None and showBox:
             self.draw_bounding_box(self.detection_frame)
 
-        cv2.imshow("Detection Frame", self.detection_frame)
+        cv2.imshow('Detection Frame', self.detection_frame)
         cv2.imshow('Foreground Frame', self.foreground)
         
 def showImage(source):
