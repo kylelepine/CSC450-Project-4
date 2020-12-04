@@ -1,3 +1,28 @@
+"""
+HumanStateClassifier.py is the HumanStateClassifier component referenced in section 3.2 of the SDD, A03_SDD_Team4.docx. 
+
+
+
+Copyright (c) 2020 Fall Detection System, All rights reserved.
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1.	Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2.	Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer
+    in the documentation and/or other materials provided with the distribution.
+
+3.	Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission. 
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+"""
 import numpy as np
 from timeit import default_timer as timer
 
@@ -8,6 +33,11 @@ from timeit import default_timer as timer
 # all values will be multiplied by -1
 from heapq import heappop, heappush, heapify
 
+
+"""
+DistanceAndClass referenced and defined in section 2.0 of the SDD, A03_SDD_Team4.docx. 
+
+"""
 class DistanceAndClass:
     def __init__(self, distance, classification):
         self.distance = distance
@@ -20,6 +50,17 @@ class DistanceAndClass:
     def __str__(self):
         return (f"{self.distance},{self.classification}")
 
+"""
+KNeighborsClassifier referenced and defined in section 2.0 of the SDD, A03_SDD_Team4.docx. 
+Max Heap referenced and defined in section 2.0 of the SDD, A03_SDD_Team4.docx, and is utilized in the KNeighborsClassifier Class.
+
+The Functional Requirement:
+
+FR.4 The system must determine if an object classified as “human” is lying or sitting down.
+FR.5 The system must be able to differentiate between when a person falls down and when they go to sit or lay down of their own will.
+
+is addressed in the classify() method of the KNeighborsClassifier class.
+"""
 class KNeighborsClassifier:
     def __init__(self, trainingDataset, k = None):
         self.training_dataset = trainingDataset

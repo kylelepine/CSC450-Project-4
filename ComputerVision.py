@@ -1,3 +1,30 @@
+"""
+ComputerVision.py is the Computer Vision component referenced in section 3.2 of the SDD, A03_SDD_Team4.docx. 
+
+
+
+
+Copyright (c) 2020 Fall Detection System, All rights reserved.
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1.	Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2.	Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer
+    in the documentation and/or other materials provided with the distribution.
+
+3.	Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission. 
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+"""
+
 import numpy as np
 from cv2 import cv2
 from queue import Queue 
@@ -9,6 +36,11 @@ import imutils
 
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
+
+"""
+BoundingBox referenced and defined in section 2.0 of the SDD, A03_SDD_Team4.docx. 
+
+"""
 
 class BoundingBox:
     
@@ -61,13 +93,25 @@ class BoundingBox:
 
         self.y2 = y_center + (height//2)
         if self.y2 < 0 or self.y2 > SCREEN_HEIGHT: self.y2 = SCREEN_HEIGHT
+"""
+FrameInfo referenced and defined in section 2.0 of the SDD, A03_SDD_Team4.docx. 
 
+"""
 class FrameInfo:
 
     def __init__(self, edgeClassification, foregroundClassification):
         self.edge_classification = edgeClassification
         self.foreground_classification = foregroundClassification
-    
+
+"""
+FrameHistory referenced and defined in section 2.0 of the SDD, A03_SDD_Team4.docx. 
+
+    The Functional Requirement:
+
+    FR.3 The system must detect when an object classified as “human” falls when an object is obstructing them.
+
+    is addressed in this class and utilized in the display function.
+"""
 
 class FrameHistory:
 
@@ -108,19 +152,6 @@ class FrameHistory:
             previous_area = area
 
         return continuous_decrease
-    
-    # Finds the greatest bounding box within the array.
-    def max_bounding_box(self):
-        width = 0
-        height = 0
-
-        for bounding_box in self.bounding_boxes:
-            if width < bounding_box.get_width():
-                width = bounding_box.get_width()
-            if height < bounding_box.get_height():
-                height = bounding_box.get_height()
-        
-        return width, height
 
     def average_area(self):
         width, height = self.average_dimensions()
@@ -166,6 +197,22 @@ class FrameHistory:
         else:
             return False
     
+"""
+ImageManipulator referenced and defined in section 2.0 of the SDD, A03_SDD_Team4.docx. 
+
+The Functional Requirement:
+
+FR.1 The system must detect and classify a human as a "human" object.
+
+is addressed in this class in the focus_movement() method.
+
+
+The Fucntional Requirement:
+
+FR.7 The system must eliminate background noise of inanimate objects and non-human animated objects.
+
+is addressed in extract_foreground() and extract_edges() of the ImageManipulator class.
+"""
 class ImageManipulator:
 
     fgbg = cv2.createBackgroundSubtractorMOG2(history=200, detectShadows=False)
@@ -323,6 +370,21 @@ def showImage(source):
 
     return cv2.destroyAllWindows()
 
+"""
+The Functional Requirement:
+
+FR.2 The system must alert the user when an object classified as a “human” falls in an indoor environment.
+
+is addressed under the checkTemplates if branch in the display function.
+The code in this branch also represents the Alert component referenced in section 3.2 of the SDD, A03_SDD_Team4.docx. 
+
+
+The Functional Requirement:
+
+FR.6 The system must access the live video feed.
+
+is addressed in the display function()
+"""
 def display(foregroundClassifier, edgeClassifier, videoPath = None, saveTemplate = False, checkTemplate = False, sessionName = None):
 
     BOUNDING_BOX_COUNT = 5
