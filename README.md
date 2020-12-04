@@ -68,8 +68,9 @@ This software runs on python. Make sure you have pyhton installed on your machin
    pip install pipenv
    ```
    
-3. Install Packages 
+3. Start Virtual Environment and Install Packages
    ```sh
+   pipenv shell
    pipenv install
    ```
 
