@@ -24,7 +24,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 """
 
-# Modules 
 import UserInterface
 import TemplateViewer
 import Templates
